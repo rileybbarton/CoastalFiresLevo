@@ -1,0 +1,7 @@
+"0","#SCATTERPLOT"
+"0","#plot graph TCTN for an example"
+"0","ggplot(data = PyOMAll, aes(x = `DBC (mg-C L¯¹)`, y = `Levoglucosan (ppb)`, color = Date)) +"
+"0","  geom_point(size = 5) + xlim(0,0.75) + ylim(0,40)"
+"2","Warning:"
+"2"," [38;5;232mRemoved 2 rows containing missing values or values outside the scale range (`geom_point()`).[39m
+"

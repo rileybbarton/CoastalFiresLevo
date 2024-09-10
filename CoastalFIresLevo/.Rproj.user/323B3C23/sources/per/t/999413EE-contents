@@ -1,0 +1,369 @@
+library(gridExtra)
+library(grid)
+library(ggplot2)
+library(tidyverse)
+library(here)
+library(viridis)
+
+#import the dat file
+here <- here()
+dat <- readr::read_csv(paste0(here, "/output/dat_combined.csv"))
+
+
+
+#SCATTERPLOT
+#plot graph TCTN for an example
+ggplot(dat, aes(C_N_molar, depth_cm_base, colour = moreau_depth_split))+
+  xlim(11,15)+
+  geom_point(aes(shape= moreau_depth_split, colour = moreau_depth_split), size = 3)  + 
+  theme_bw()+
+  labs(x = "TC:TN molar", y = "Bottom depth [cm]") +
+  scale_y_reverse()       +
+  scale_color_manual(values = c("#F18F01","#7D5DA7","#AB96C6")) +
+  scale_shape_manual(values = c(19, 19, 17))+
+  theme(plot.title = element_text(size = 18, vjust = 1)) +
+  theme(axis.text.x = element_text(size = 11, angle = 0, colour = 1)) + 
+  theme(axis.text.y = element_text(size = 11, colour = 1)) +  
+  theme(axis.title = element_text(size = 12, face = "bold", colour = "black"), 
+        panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "grey30"), 
+        axis.ticks = element_line(size=.2), axis.text = element_blank(), legend.key = element_blank(), 
+        legend.title = element_text(size = 12, face = "bold", colour = "black"), 
+        legend.text = element_text(size = 9, colour = "black")) + 
+  theme(axis.ticks = element_line(size = 0.1))
+end
+
+
+#if happy with appearance, assign to a variable
+  TCTNscatter <- ggplot(dat, aes(C_N_molar, depth_cm_base, colour = moreau_depth_split))+
+    xlim(11,15)+
+    geom_point(aes(shape= moreau_depth_split, colour = moreau_depth_split), size = 3)  + 
+    theme_bw()+
+    labs(x = "TC:TN molar", y = "Bottom depth [cm]") +
+    scale_y_reverse()       +
+    scale_color_manual(values = c("#F18F01","#7D5DA7","#AB96C6")) +
+    scale_shape_manual(values = c(19, 19, 17))+
+    theme(plot.title = element_text(size = 18, vjust = 1)) +
+    theme(axis.text.x = element_text(size = 11, angle = 0, colour = 1)) + 
+    theme(axis.text.y = element_text(size = 11, colour = 1)) +  
+    theme(axis.title = element_text(size = 12, face = "bold", colour = "black"), 
+          panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "grey30"), 
+          axis.ticks = element_line(size=.2), axis.text = element_blank(), legend.key = element_blank(), 
+          legend.title = element_text(size = 12, face = "bold", colour = "black"), 
+          legend.text = element_text(size = 9, colour = "black")) + 
+    theme(axis.ticks = element_line(size = 0.1))
+  end
+
+#BOXPLOT
+#plot graph
+ggplot(dat, aes(x=moreau_depth_split, y=C_N_molar, fill=moreau_depth_split)) +
+  geom_boxplot()+
+  ylim(11,15)+
+  scale_fill_manual(values=c("#F18F01","#7D5DA7","#AB96C6")) +
+  labs(x = "", y = "TC:TN molar", colour = "Lake") +
+  coord_flip()+
+  theme(axis.title = element_text(size = 12, face = "bold", colour = "black"), 
+        panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "grey30"), 
+        axis.ticks.x = element_line(size=.2), axis.text.x = element_text(size = 11, colour = "1"), legend.key = element_blank(), 
+        axis.ticks.y = element_line(size=0.001, colour = "white"), axis.text.y = element_text(size=.001, colour = "white"),
+        legend.title = element_text(size = 12, face = "bold", colour = "black"), 
+        legend.text = element_text(size = 9, colour = "black"))
+
+#if happy with appearance, assign to a variable
+TCTNboxplot <- ggplot(dat, aes(x=moreau_depth_split, y=C_N_molar, fill=moreau_depth_split)) +
+  geom_boxplot()+
+  ylim(11,15)+
+  scale_fill_manual(values=c("#F18F01","#7D5DA7","#AB96C6")) +
+  labs(x = "", y = "TC:TN molar", colour = "Lake") +
+  coord_flip()+
+  theme(axis.title = element_text(size = 12, face = "bold", colour = "black"), 
+        panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "grey30"), 
+        axis.ticks.x = element_line(size=.2), axis.text.x = element_text(size = 11, colour = "1"), legend.key = element_blank(), 
+        axis.ticks.y = element_line(size=0.001, colour = "white"), axis.text.y = element_text(size=.001, colour = "white"),
+        legend.title = element_text(size = 12, face = "bold", colour = "black"), 
+        legend.text = element_text(size = 9, colour = "black"))
+
+
+#From here, repeat for each desired graph type that will be displayed with box and scatter plots
+
+#WEOC
+#scatterplot ****WITH DATE APPROXIMATE ADDED, NOT INTEGRATED BELOW YET****
+WEOCscatter <- ggplot(dat, aes(doc_mgL_mean, depth_cm_base, colour = moreau_depth_split))+
+  xlim(8,26)+
+  geom_point(aes(shape= moreau_depth_split, colour = moreau_depth_split), size = 3)  + 
+  theme_bw()+
+  geom_errorbar(aes(y=depth_cm_base, xmin=doc_mgL_mean-doc_mgL_sd, xmax=doc_mgL_mean+doc_mgL_sd), width=0.9)+
+  labs(x = "WEOC_mgL", y = "Bottom depth [cm]") +
+  scale_y_reverse()       +
+  scale_y_continuous(trans = "reverse", name = 'Bottom Depth [cm]', sec.axis = sec_axis(~.*6.995-2035, name = 'Approx. Date AD'))+
+  scale_color_manual(values = c("#F18F01","#7D5DA7","#AB96C6")) +
+  scale_shape_manual(values = c(19, 19, 17))+
+  theme(plot.title = element_text(size = 18, vjust = 1)) +
+  theme(axis.text.x = element_text(size = 11, angle = 0, colour = 1)) + 
+  theme(axis.text.y = element_text(size = 11, colour = 1)) +  
+  theme(axis.title = element_text(size = 12, face = "bold", colour = "black"), 
+        panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "grey30"), 
+        axis.ticks = element_line(size=.2), axis.text = element_blank(), legend.key = element_blank(), 
+        legend.title = element_text(size = 12, face = "bold", colour = "black"), 
+        legend.text = element_text(size = 9, colour = "black")) + 
+  theme(axis.ticks = element_line(size = 0.1))
+end
+
+#boxplot
+WEOCboxplot <- ggplot(dat, aes(x=moreau_depth_split, y=doc_mgL_mean, fill=moreau_depth_split)) +
+  geom_boxplot(
+  )+
+  ylim(8,26)+
+  scale_fill_manual(values=c("#F18F01","#7D5DA7","#AB96C6")) +
+  labs(x = "", y = "WEOC_mgL", colour = "Lake") +
+  coord_flip()+
+  theme(axis.title = element_text(size = 12, face = "bold", colour = "black"), 
+        panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "grey30"), 
+        axis.ticks.x = element_line(size=.2), axis.text.x = element_text(size = 11, colour = "1"), legend.key = element_blank(), 
+        axis.ticks.y = element_line(size=0.001, colour = "white"), axis.text.y = element_text(size=.001, colour = "white"),
+        legend.title = element_text(size = 12, face = "bold", colour = "black"), 
+        legend.text = element_text(size = 9, colour = "black"))
+
+
+#SUVA
+#scatter
+SUVAscatter <- ggplot(dat, aes(suva_mean, depth_cm_base, colour = moreau_depth_split))+
+  xlim(.5,3.5)+
+  geom_point(aes(shape= moreau_depth_split, colour = moreau_depth_split), size = 3)  + 
+  theme_bw()+
+  geom_errorbar(aes(y=depth_cm_base, xmin=suva_mean-suva_sd, xmax=suva_mean+suva_sd), width=0.9)+
+  labs(x = "SUVA254", y = "Bottom depth [cm]") +
+  scale_y_reverse()       +
+  scale_y_continuous(trans = "reverse", name = 'Bottom Depth [cm]', sec.axis = sec_axis(~.*6.995-2035, name = 'Approx. Date AD'))+
+  scale_color_manual(values = c("#F18F01","#7D5DA7","#AB96C6")) +
+  scale_shape_manual(values = c(19, 19, 17))+
+  theme(plot.title = element_text(size = 18, vjust = 1)) +
+  theme(axis.text.x = element_text(size = 11, angle = 0, colour = 1)) + 
+  theme(axis.text.y = element_text(size = 11, colour = 1)) +  
+  theme(axis.title = element_text(size = 12, face = "bold", colour = "black"), 
+        panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "grey30"), 
+        axis.ticks = element_line(size=.2), axis.text = element_blank(), legend.key = element_blank(), 
+        legend.title = element_text(size = 12, face = "bold", colour = "black"), 
+        legend.text = element_text(size = 9, colour = "black")) + 
+  theme(axis.ticks = element_line(size = 0.1))
+end
+
+#boxplot
+SUVAboxplot <- ggplot(dat, aes(x=moreau_depth_split, y=suva_mean, fill=moreau_depth_split)) +
+  geom_boxplot()+
+  ylim(.5,3.5)+
+  scale_fill_manual(values=c("#F18F01","#7D5DA7","#AB96C6")) +
+  labs(x = "", y = "SUVA254", colour = "Lake") +
+  coord_flip()+
+  theme(axis.title = element_text(size = 12, face = "bold", colour = "black"), 
+        panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "grey30"), 
+        axis.ticks.x = element_line(size=.2), axis.text.x = element_text(size = 11, colour = "1"), legend.key = element_blank(), 
+        axis.ticks.y = element_line(size=0.001, colour = "white"), axis.text.y = element_text(size=.001, colour = "white"),
+        legend.title = element_text(size = 12, face = "bold", colour = "black"), 
+        legend.text = element_text(size = 9, colour = "black"))
+
+
+#COMPONENTPLOTS
+#FMAX2 vs FMAX4. This uses a separate CSV in code here, will edit once I get permission to overwrite
+ggplot(dat, aes(c2_fmax_mean, c4_fmax_mean, colour = moreau_depth_split))+
+  geom_point(aes(shape= moreau_depth_split, colour = moreau_depth_split), size = 3)  + 
+  theme_bw()+
+  labs(x = "FMAX2", y = "FMAX4") +
+  scale_color_manual(values = c("#F18F01","#7D5DA7","#AB96C6")) +
+  scale_shape_manual(values = c(19, 19, 17))+
+  theme(plot.title = element_text(size = 18, vjust = 1)) +
+  theme(axis.text.x = element_text(size = 11, angle = 0, colour = 1)) + 
+  theme(axis.text.y = element_text(size = 11, colour = 1)) +  
+  theme(axis.title = element_text(size = 12, face = "bold", colour = "black"), 
+        panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "grey30"), 
+        axis.ticks = element_line(size=.2), axis.text = element_blank(), legend.key = element_blank(), 
+        legend.title = element_text(size = 12, face = "bold", colour = "black"), 
+        legend.text = element_text(size = 9, colour = "black")) + 
+  theme(axis.ticks = element_line(size = 0.1))
+end
+
+#DEPTH VS YEAR
+ggplot(dat, aes(date_ad_base, depth_cm_base, colour = lake))+
+  geom_point(size = 3)  + 
+  labs(x = "Date AD", y = "Bottom depth [cm]", colour = "Lake") +
+  scale_color_manual(values = c("#F18F01","#7D5DA7","#AB96C6")) +
+  theme_bw()+
+  scale_y_reverse()+
+  scale_x_reverse()+
+  theme(plot.title = element_text(size = 18, vjust = 1)) +
+  theme(axis.text.x = element_text(size = 11, angle = 0, colour = 1)) + 
+  theme(axis.text.y = element_text(size = 11, colour = 1)) +  
+  theme(axis.title = element_text(size = 12, face = "bold", colour = "black"), 
+        panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "grey30"), 
+        axis.ticks = element_line(size=.2), axis.text = element_blank(), legend.key = element_blank(), 
+        legend.title = element_text(size = 12, face = "bold", colour = "black"), 
+        legend.text = element_text(size = 9, colour = "black")) + 
+  theme(axis.ticks = element_line(size = 0.1))
+end
+
+#ACID RAIN PLOTS
+#C3%, micriobial humic
+c3vsdepth <- ggplot(dat, aes(c3_pct_mean, depth_cm_base, colour = moreau_depth_split))+
+  geom_point(aes(shape= moreau_depth_split, colour = moreau_depth_split), size = 3)   + 
+  labs(x = "C3%", y = "Bottom depth [cm]") +
+  scale_color_manual(values = c("white","#7D5DA7","#AB96C6")) +
+  scale_shape_manual(values = c(19, 19, 17))+
+  theme_bw()+
+  scale_y_reverse()+
+  theme(plot.title = element_text(size = 18, vjust = 1)) +
+  theme(axis.text.x = element_text(size = 11, angle = 0, colour = 1)) + 
+  theme(axis.text.y = element_text(size = 11, colour = 1)) +  
+  theme(axis.title = element_text(size = 12, face = "bold", colour = "black"), 
+        panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "grey30"), 
+        axis.ticks = element_line(size=.2), axis.text = element_blank(), legend.key = element_blank(), 
+        legend.title = element_text(size = 12, face = "bold", colour = "black"), 
+        legend.text = element_text(size = 9, colour = "black")) + 
+  theme(axis.ticks = element_line(size = 0.1))
+end
+
+#C5%, tyrosine like
+c5vsdepth <- ggplot(dat, aes(c5_pct_mean, depth_cm_base, colour = moreau_depth_split))+
+  geom_point(aes(shape= moreau_depth_split, colour = moreau_depth_split), size = 3)  + 
+  labs(x = "C5%", y = "Bottom depth [cm]", colour = "Lake") +
+  scale_color_manual(values = c("white","#7D5DA7","#AB96C6")) +
+  scale_shape_manual(values = c(19, 19, 17))+
+  theme_bw()+
+  scale_y_reverse()+
+  theme(plot.title = element_text(size = 18, vjust = 1)) +
+  theme(axis.text.x = element_text(size = 11, angle = 0, colour = 1)) + 
+  theme(axis.text.y = element_text(size = 11, colour = 1)) +  
+  theme(axis.title = element_text(size = 12, face = "bold", colour = "black"), 
+        panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "grey30"), 
+        axis.ticks = element_line(size=.2), axis.text = element_blank(), legend.key = element_blank(), 
+        legend.title = element_text(size = 12, face = "bold", colour = "black"), 
+        legend.text = element_text(size = 9, colour = "black")) + 
+  theme(axis.ticks = element_line(size = 0.1))
+end
+
+#TERRESTRIAL TO MICROBIAL RATIO
+#FMAX ratio of c1,c2,c4 to c3,c5 vs depth
+c124vsc35scat <- ggplot(dat, aes(c124_c35_mean, depth_cm_base, colour = moreau_depth_split))+
+  geom_point(aes(shape= moreau_depth_split, colour = moreau_depth_split), size = 3)  + 
+  theme_bw()+
+  ylim(.5,5)+
+  geom_errorbar(aes(y=depth_cm_base, xmin=c124_c35_mean-c124_c35_sd, xmax=c124_c35_mean+c124_c35_sd), width=0.9)+
+  labs(x = "Terrestrial:Microbial ratio", y = "Bottom depth [cm]") +
+  scale_y_reverse()       +
+  scale_color_manual(values = c("#F18F01","#7D5DA7","#AB96C6")) +
+  scale_shape_manual(values = c(19, 19, 17))+
+  theme(plot.title = element_text(size = 18, vjust = 1)) +
+  theme(axis.text.x = element_text(size = 11, angle = 0, colour = 1)) + 
+  theme(axis.text.y = element_text(size = 11, colour = 1)) +  
+  theme(axis.title = element_text(size = 12, face = "bold", colour = "black"), 
+        panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "grey30"), 
+        axis.ticks = element_line(size=.2), axis.text = element_blank(), legend.key = element_blank(), 
+        legend.title = element_text(size = 12, face = "bold", colour = "black"), 
+        legend.text = element_text(size = 9, colour = "black")) + 
+  theme(axis.ticks = element_line(size = 0.1))
+end
+
+#boxplot
+ggplot(dat, aes(x=moreau_depth_split, y=c124_c35_mean, fill=moreau_depth_split)) +
+  geom_boxplot()+
+  ylim(.5,5)+
+  scale_fill_manual(values=c("#F18F01","#7D5DA7","#AB96C6")) +
+  labs(x = "", y = "Terrestrial:Microbial ratio", colour = "Lake") +
+  coord_flip()+
+  theme(axis.title = element_text(size = 12, face = "bold", colour = "black"), 
+        panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "grey30"), 
+        axis.ticks.x = element_line(size=.2), axis.text.x = element_text(size = 11, colour = "1"), legend.key = element_blank(), 
+        axis.ticks.y = element_line(size=0.001, colour = "white"), axis.text.y = element_text(size=.001, colour = "white"),
+        legend.title = element_text(size = 12, face = "bold", colour = "black"), 
+        legend.text = element_text(size = 9, colour = "black"))
+
+#% TERRESTRIAL WEOM
+#C1,C2,C4 percentage of tutoal fluoresence
+ggplot(dat, aes(c1_c2_c4_pct_mean, depth_cm_base, colour = moreau_depth_split))+
+  geom_point(aes(shape= moreau_depth_split, colour = moreau_depth_split), size = 3)  + 
+  theme_bw()+
+  labs(x = "|C1,C2,C4|%", y = "Bottom depth [cm]") +
+  scale_y_reverse()       +
+  geom_errorbar(aes(y=depth_cm_base, xmin=c1_c2_c4_pct_mean-c1_c2_c4_pct_sd, xmax=c1_c2_c4_pct_mean+c1_c2_c4_pct_sd), width=0.9)+
+  scale_color_manual(values = c("#F18F01","#7D5DA7","#AB96C6")) +
+  scale_shape_manual(values = c(19, 19, 17))+
+  theme(plot.title = element_text(size = 18, vjust = 1)) +
+  theme(axis.text.x = element_text(size = 11, angle = 0, colour = 1)) + 
+  theme(axis.text.y = element_text(size = 11, colour = 1)) +  
+  theme(axis.title = element_text(size = 12, face = "bold", colour = "black"), 
+        panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "grey30"), 
+        axis.ticks = element_line(size=.2), axis.text = element_blank(), legend.key = element_blank(), 
+        legend.title = element_text(size = 12, face = "bold", colour = "black"), 
+        legend.text = element_text(size = 9, colour = "black")) + 
+  theme(axis.ticks = element_line(size = 0.1))
+end
+
+#% MICROBIAL
+#C3,C5 percentage of tutoal fluoresence
+ggplot(dat, aes(c3_c5_pct_mean, depth_cm_base, colour = moreau_depth_split))+
+  geom_point(aes(shape= moreau_depth_split, colour = moreau_depth_split), size = 3)  + 
+  theme_bw()+
+  ylim(18,64)+
+  labs(x = "|C3,C5|%", y = "Bottom depth [cm]") +
+  scale_y_reverse()       +
+  geom_errorbar(aes(y=depth_cm_base, xmin=c3_c5_pct_mean-c3_c5_pct_sd, xmax=c3_c5_pct_mean+c3_c5_pct_sd), width=0.9)+
+  scale_color_manual(values = c("#F18F01","#7D5DA7","#AB96C6")) +
+  scale_shape_manual(values = c(19, 19, 17))+
+  theme(plot.title = element_text(size = 18, vjust = 1)) +
+  theme(axis.text.x = element_text(size = 11, angle = 0, colour = 1)) + 
+  theme(axis.text.y = element_text(size = 11, colour = 1)) +  
+  theme(axis.title = element_text(size = 12, face = "bold", colour = "black"), 
+        panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "grey30"), 
+        axis.ticks = element_line(size=.2), axis.text = element_blank(), legend.key = element_blank(), 
+        legend.title = element_text(size = 12, face = "bold", colour = "black"), 
+        legend.text = element_text(size = 9, colour = "black")) + 
+  theme(axis.ticks = element_line(size = 0.1))
+end
+
+#boxplot
+ggplot(dat, aes(x=moreau_depth_split, y=c3_c5_pct_mean, fill=moreau_depth_split)) +
+  geom_boxplot()+
+  ylim(18,64)+
+  scale_fill_manual(values=c("#F18F01","#7D5DA7","#AB96C6")) +
+  labs(x = "", y = "Microbial FDOM %", colour = "Lake") +
+  coord_flip()+
+  theme(axis.title = element_text(size = 12, face = "bold", colour = "black"), 
+        panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "grey30"), 
+        axis.ticks.x = element_line(size=.2), axis.text.x = element_text(size = 11, colour = "1"), legend.key = element_blank(), 
+        axis.ticks.y = element_line(size=0.001, colour = "white"), axis.text.y = element_text(size=.001, colour = "white"),
+        legend.title = element_text(size = 12, face = "bold", colour = "black"), 
+        legend.text = element_text(size = 9, colour = "black"))
+
+
+#C4 with depth w/o C2
+ggplot(dat, aes(c4_fmax_mean, depth_cm_base, colour = moreau_depth_split))+
+  geom_point(aes(shape= moreau_depth_split, colour = moreau_depth_split), size = 3)  + 
+  theme_bw()+
+  geom_errorbar(aes(y=depth_cm_base, xmin=c4_fmax_mean-c4_fmax_sd, xmax=c4_fmax_mean+c4_fmax_sd), width=0.9)+
+  ylim(0,.8)+
+  labs(x = "C4 FMAX", y = "Bottom depth [cm]") +
+  scale_y_reverse()       +
+  scale_color_manual(values = c("#F18F01","#7D5DA7","#AB96C6")) +
+  scale_shape_manual(values = c(19, 19, 17))+
+  theme(plot.title = element_text(size = 18, vjust = 1)) +
+  theme(axis.text.x = element_text(size = 11, angle = 0, colour = 1)) + 
+  theme(axis.text.y = element_text(size = 11, colour = 1)) +  
+  theme(axis.title = element_text(size = 12, face = "bold", colour = "black"), 
+        panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "grey30"), 
+        axis.ticks = element_line(size=.2), axis.text = element_blank(), legend.key = element_blank(), 
+        legend.title = element_text(size = 12, face = "bold", colour = "black"), 
+        legend.text = element_text(size = 9, colour = "black")) + 
+  theme(axis.ticks = element_line(size = 0.1))
+end
+
+#Boxplot
+ggplot(dat, aes(x=moreau_depth_split, y=c4_fmax_mean, fill=moreau_depth_split)) +
+  geom_boxplot()+
+  ylim(0,.8)+
+  scale_fill_manual(values=c("#F18F01","#7D5DA7","#AB96C6")) +
+  labs(x = "", y = "C4 FMAX", colour = "Lake") +
+  coord_flip()+
+  theme(axis.title = element_text(size = 12, face = "bold", colour = "black"), 
+        panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "grey30"), 
+        axis.ticks.x = element_line(size=.2), axis.text.x = element_text(size = 11, colour = "1"), legend.key = element_blank(), 
+        axis.ticks.y = element_line(size=0.001, colour = "white"), axis.text.y = element_text(size=.001, colour = "white"),
+        legend.title = element_text(size = 12, face = "bold", colour = "black"), 
+        legend.text = element_text(size = 9, colour = "black"))

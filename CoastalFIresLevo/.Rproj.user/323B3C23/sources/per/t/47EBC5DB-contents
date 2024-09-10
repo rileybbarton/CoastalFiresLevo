@@ -1,0 +1,50 @@
+---
+title: "CoastalLevoDataPlay"
+author: "rbb xg"
+date: "2024-08-14"
+output: html_document
+---
+
+```{r}
+PyOMAll <- readr::read_csv("C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/CoastalFIresLevo/R_Coastal_Data.csv")
+View(PyOMAll)
+```
+
+##Loading Dataset and necessary libraries
+```{r}
+library(ggplot2)
+library(dplyr)
+```
+
+## The purpose of this document is to play around with preliminary data for coastal fire project. Goal is to learn how to make figures and see if there is coupling between levoglucosan and dbissolved black carbon. And if there is, is the coupling conditional?
+
+
+##Levo and DBC compared to DOC
+```{r}
+# Plot the chart for sample with
+# DOC between 0 to 15 and
+# Levo between 0 and 70.
+plot(x = PyOMAll$`DOC (mg-C L¯¹)`, y = PyOMAll$`Levoglucosan (ppb)`,
+    xlab = "DOC (mg-C L¯¹)",
+    ylab = "Levoglucosan (ppb)",
+    xlim = c(0, 15),
+    ylim = c(0, 40),        
+    main = "Levo v DOC")
+
+```
+
+```{r}
+# Plot the chart for sample with
+ggplot(PyOMAll, aes(`DOC (mg-C L¯¹)`, `Levoglucosan (ppb)`)) +
+  geom_point(size = 5, color = "#99AABB") + xlim(0,15) + ylim(0,40)
+
+
+```
+
+```{r}
+# Plot the chart for sample with
+ggplot(PyOMAll, aes(`DBC (mg-C L¯¹)`, `Levoglucosan (ppb)`)) +
+  geom_point(size = 5, color = "#99AABB") + xlim(0,0.75) + ylim(0,40)
+
+
+```
