@@ -19,7 +19,7 @@ library(here)
 LevoData <- readr::read_csv("CoastalFires_Levo.csv")
 PublishedData <- readr::read_csv("CoastalFires_PublishedData.csv")
 ``` 
-#adjust data frames
+#adjust levoglucosan data frames
 ```{r}
 #delete excess columns
 LevoData <- LevoData %>% select(-relative_area_levo, -relative_amount_levo, -levoglucosan_area, -C13_levoglucosan_area, -c13_levo_ppb)
@@ -29,9 +29,12 @@ LevoData$sample_id <- str_extract(LevoData$header, "(?<=-).*")
 LevoData$replicate <- str_extract(LevoData$header, "(?<=R)[0-2]+")
 #remove non-data (i.e., standards)
 LevoData <- LevoData %>% filter(!is.na(replicate))
-#remove excess columns and print
-LevoData <- LevoData %>% select(-header)
+#remove a naming error
+LevoData[LevoData == 'SAN-7DUP'] <- 'SAN-7'
+#average replicates
+LevoData <- LevoData %>% group_by(sample_id) %>% summarize(avg_levo_ppb=mean(levo_ppb))
 print(LevoData)
+#adjust the published data frame
 #remove excess columns and print
 PublishedData <- PublishedData %>% select(-TSS_mg_per_L, -POC_mgC_per_L, -PBC_mgC_per_L, -PBC_TSS_perc, -PBC_POC_perc, -pB6CA_nM,-pB5CA_nM, -pB6CA_B5CA)
 print(PublishedData)
@@ -42,15 +45,15 @@ print(PublishedData)
 #combine data frames
 Data <- left_join(LevoData, PublishedData, by = "sample_id")
 #rearrange column order to move levo_ppb after DOC
-Data <- Data %>% select(sample_id, replicate, watershed, date, time, lat, long, Q_m_sq_per_sec, flow_cat, lagoon, DOC_mgC_per_L, levo_ppb, DBC_mgC_per_L, everything())
+Data <- Data %>% select(sample_id, watershed, date, time, lat, long, Q_m_sq_per_sec, flow_cat, lagoon, DOC_mgC_per_L, avg_levo_ppb, DBC_mgC_per_L, everything())
 #print new combined data frame to be used for data analysis
 print(Data)
 ```
 #Calculate levoclucosan ratios
 ```{r}
 #calculate the ratio of levoglucosan to bulk DOC and DBC
-Data$Levo_DOC_perc <- Data$levo_ppb/1000/Data$DOC_mgC_per_L*100
-Data$Levo_DBC <- Data$levo_ppb/1000/Data$DBC_mgC_per_L
+Data$Levo_DOC_perc <- Data$avg_levo_ppb/1000/Data$DOC_mgC_per_L*100
+Data$Levo_DBC <- Data$avg_levo_ppb/1000/Data$DBC_mgC_per_L
 print(Data)
 ```
 #Shapiro-Wilk Test
@@ -78,7 +81,7 @@ print(shapiro_df)
 #The differences of concentrations and key ratios by watershed
 ```{r}
 #is the concentration of levoglucosan different across watersheds?
-kruskal_test_levo <- kruskal.test(levo_ppb ~ watershed, data = Data)
+kruskal_test_levo <- kruskal.test(avg_levo_ppb ~ watershed, data = Data)
 print(kruskal_test_levo)
 #is the ratio of levoglucosan to bulk DOC different across watersheds?
 kruskal_test_levotoDOC <- kruskal.test(Levo_DOC_perc ~ watershed, data = Data)
@@ -96,21 +99,11 @@ Data$date <- as.Date(Data$date, format = "%d-%b-%y")
 fire_date <- as.Date("2020-08-16")
 Data$time_since_fire_day <- as.numeric(Data$date - fire_date)
 
-#Prevent ties by averaging all data with levoglucosan replicates
-Data_numeric <- Data %>%
-  select_if(is.numeric)
-
-# Use the aggregate function to average replicates for numeric columns
-Data_avg <- Data %>%
-  group_by(sample_id) %>%
-  summarise(across(where(is.numeric), mean, na.rm = TRUE),
-            watershed = first(watershed))
-
 #make a table to showcase the coefficients and p-values
 # Perform Spearman's rank correlation using the averaged data
-spearman_corr_levo_ppb <- cor.test(Data_avg$time_since_fire_day, Data_avg$levo_ppb, method = "spearman", use = "pairwise.complete.obs")
-spearman_corr_levoDOC <- cor.test(Data_avg$time_since_fire_day, Data_avg$Levo_DOC_perc, method = "spearman", use = "pairwise.complete.obs")
-spearman_corr_levoDBC <- cor.test(Data_avg$time_since_fire_day, Data_avg$Levo_DBC, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_levo_ppb <- cor.test(Data$time_since_fire_day, Data$avg_levo_ppb, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_levoDOC <- cor.test(Data$time_since_fire_day, Data$Levo_DOC_perc, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_levoDBC <- cor.test(Data$time_since_fire_day, Data$Levo_DBC, method = "spearman", use = "pairwise.complete.obs")
 
 # Extract p-values and rho values
 results <- data.frame(
