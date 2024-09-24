@@ -46,6 +46,9 @@ print(PublishedData)
 Data <- left_join(LevoData, PublishedData, by = "sample_id")
 #rearrange column order to move levo_ppb after DOC
 Data <- Data %>% select(sample_id, watershed, date, time, lat, long, Q_m_sq_per_sec, flow_cat, lagoon, DOC_mgC_per_L, avg_levo_ppb, DBC_mgC_per_L, everything())
+#exclude samples taken at lagoon dowstream of Scott sampling site
+Data <- subset(Data, Data$sample_id != "SCT-7")
+Data <- subset(Data, Data$sample_id != "SCT-8")
 #print new combined data frame to be used for data analysis
 print(Data)
 ```
@@ -120,4 +123,11 @@ results <- data.frame(
 
 # Print the results table
 print(results)
+```
+#Miscellaneous Correlations
+``` {r}
+
+
+
+
 ```
