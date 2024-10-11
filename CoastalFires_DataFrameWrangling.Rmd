@@ -1,0 +1,80 @@
+---
+title: "CoastalFires_Dataset_Wrangling"
+author: "rbb"
+date: "`r Sys.Date()`"
+output: html_document
+---
+Load necessary Libraries
+```{r}
+library(fuzzyjoin)
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(here)
+```
+Set Working Directory
+```{r}
+setwd("C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires")
+```
+
+Load datafiles: levoglucosan data, discharge data, watershed and burn severity data, and previously published organic carbon and black carbon data
+```{r}
+LevoData <- readr::read_csv("CoastalFires_Levo.csv")
+PublishedData <- readr::read_csv("CoastalFires_PublishedData.csv")
+WatershedData <- readr::read_csv("CoastalFires_WatershedData.csv")
+DischargeData <- readr::read_csv("CoastalFires_Discharge.csv")
+``` 
+
+Adjust LevoData by averaging replicates and removing unnecessary information
+```{r}
+#delete excess columns
+LevoData <- LevoData %>% select(-relative_area_levo, -relative_amount_levo, -levoglucosan_area, -C13_levoglucosan_area, -c13_levo_ppb)
+#rearrange columns to get sample_id and replicate number
+library(stringr)
+LevoData$sample_id <- str_extract(LevoData$header, "(?<=-).*")
+LevoData$replicate <- str_extract(LevoData$header, "(?<=R)[0-2]+")
+#remove non-data (i.e., standards)
+LevoData <- LevoData %>% filter(!is.na(replicate))
+#remove any naming errors
+LevoData[LevoData == 'SAN-7DUP'] <- 'SAN-7'
+#average replicates
+LevoData <- LevoData %>% group_by(sample_id) %>% summarize(avg_levo_ppb=mean(levo_ppb))
+print(LevoData)
+```
+
+Adjust the PublishedData data frame to remove unnecessary information
+```{r}
+#adjust the published data frame
+#remove excess columns and print
+PublishedData <- PublishedData %>% select(-TSS_mg_per_L, -POC_mgC_per_L, -PBC_mgC_per_L, -PBC_TSS_perc, -PBC_POC_perc, -pB6CA_nM,-pB5CA_nM, -pB6CA_B5CA)
+print(PublishedData)
+```
+
+Combine LevoData, WatershedData, and PublishedData Data Frames to one centralized dataframe: CoastalFires_CombinedData
+```{r}
+#combine data frames
+Data <- left_join(LevoData, PublishedData, by = "sample_id")
+#rearrange column order to move levo_ppb after DOC
+Data <- Data %>% select(sample_id, watershed, date, time, lat, long, Q_m_sq_per_sec, flow_cat, lagoon, DOC_mgC_per_L, avg_levo_ppb, DBC_mgC_per_L, everything())
+#exclude samples taken at lagoon dowstream of Scott sampling site
+Data <- subset(Data, Data$sample_id != "SCT-7")
+Data <- subset(Data, Data$sample_id != "SCT-8")
+#add watershed data to table and remove duplicate locations
+Data <- left_join(Data, WatershedData, by = "watershed")
+CoastalFires_CombinedData <- Data %>% select(-Lat, -Long)
+#print new combined data frame to be used for data analysis
+print(CoastalFires_CombinedData) 
+```
+
+#Calculate levoclucosan ratios
+```{r}
+#calculate the ratio of levoglucosan to bulk DOC and DBC
+CoastalFires_CombinedData$Levo_DOC_perc <- Data$avg_levo_ppb/1000/Data$DOC_mgC_per_L*100
+CoastalFires_CombinedData$Levo_DBC <- Data$avg_levo_ppb/1000/Data$DBC_mgC_per_L
+print(CoastalFires_CombinedData)
+```
+
+Create a csv file of the combined dataset:CoastalFires_CombinedData
+```{r}
+write.csv(CoastalFires_CombinedData, file = "CoastalFires_CombinedData.csv")
+```
