@@ -1,0 +1,262 @@
+---
+title: "CoastalFires_FigureCreation"
+author: "rbb"
+date: "`r Sys.Date()`"
+output: html_document
+---
+#load necessary libraries
+```{r}
+library(ggplot2)
+library(grid)
+library(extrafont)
+library(tidyr)
+library(dplyr)
+```
+
+#set working directory
+```{r}
+setwd("C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires")
+```
+
+#load dataset
+```{r}
+FigureData <- readr::read_csv("CoastalFires_FigureData.csv")
+```
+```{r}
+#levo v burn extent
+ggplot(FigureData, aes(x = Burn_Extent_percent, y = avg_levo_ppb, fill = watershed)) +
+  geom_boxplot(color = "black", size = 1.2, outlier.shape = NA) +  # Box plots
+  geom_jitter(width = 0.0001, color = "black", alpha = 1) +  # Add jittered points
+  scale_fill_manual(values = c("#E94411", "#FF7111", "#FFC44F", "#FFFFCC", "#9E0000")) +  # Customize colors
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_blank(),       # Remove major gridlines
+    panel.grid.minor = element_blank(),       # Remove minor gridlines
+    axis.ticks.length = unit(0.25, "cm"),     # Length of ticks
+    axis.ticks = element_line(size = 1),      # Thickness of tick marks
+    axis.ticks.y = element_line(size = 1),    # Y-axis tick thickness
+    axis.ticks.x = element_line(size = 1),    # X-axis tick thickness
+    axis.line = element_line(size = 1),        # Add axis lines
+    legend.position = "none",                   # Remove the legend
+    text = element_text(color = "black"),  # Set font to Calibri
+    axis.text.x = element_text(color = "black", size = 14),  # X-axis text size
+    axis.text.y = element_text(color = "black", size = 14),  # Y-axis text size
+    axis.title.x = element_text(size = 16),    # X-axis title size
+    axis.title.y = element_text(size = 16)      # Y-axis title size
+  ) +
+  labs(x = "Burn Extent",
+       y = "Levoglucosan (ppp)")
+ggsave("A.png") 
+
+#flux_levo v burn extent
+ggplot(FigureData, aes(x = Burn_Extent_percent, y = flux_levo, fill = watershed)) +
+  geom_boxplot(color = "black", size = 1.2, outlier.shape = NA) +  # Box plots
+  geom_jitter(width = 0.0001, color = "black", alpha = 1) +  # Add jittered points
+  scale_fill_manual(values = c("#E94411", "#FF7111", "#FFC44F", "#FFFFCC", "#9E0000")) +  # Customize colors
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_blank(),       # Remove major gridlines
+    panel.grid.minor = element_blank(),       # Remove minor gridlines
+    axis.ticks.length = unit(0.25, "cm"),     # Length of ticks
+    axis.ticks = element_line(size = 1),      # Thickness of tick marks
+    axis.ticks.y = element_line(size = 1),    # Y-axis tick thickness
+    axis.ticks.x = element_line(size = 1),    # X-axis tick thickness
+    axis.line = element_line(size = 1),        # Add axis lines
+    legend.position = "none",                   # Remove the legend
+    text = element_text(color = "black"),  # Set font to Calibri
+    axis.text.x = element_text(color = "black", size = 14),  # X-axis text size
+    axis.text.y = element_text(color = "black", size = 14),  # Y-axis text size
+    axis.title.x = element_text(size = 16),    # X-axis title size
+    axis.title.y = element_text(size = 16)      # Y-axis title size
+  ) +
+  labs(x = "Burn Extent",
+       y = "Levoglucosan Flux")
+ggsave("B.png") 
+  
+#yield_levo v burn extent
+ggplot(FigureData, aes(x = Burn_Extent_percent, y = yield_levo, fill = watershed)) +
+  geom_boxplot(color = "black", size = 1.2, outlier.shape = NA) +  # Box plots
+  geom_jitter(width = 0.0001, color = "black", alpha = 1) +  # Add jittered points
+  scale_fill_manual(values = c("#E94411", "#FF7111", "#FFC44F", "#FFFFCC", "#9E0000")) +  # Customize colors
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_blank(),       # Remove major gridlines
+    panel.grid.minor = element_blank(),       # Remove minor gridlines
+    axis.ticks.length = unit(0.25, "cm"),     # Length of ticks
+    axis.ticks = element_line(size = 1),      # Thickness of tick marks
+    axis.ticks.y = element_line(size = 1),    # Y-axis tick thickness
+    axis.ticks.x = element_line(size = 1),    # X-axis tick thickness
+    axis.line = element_line(size = 1),        # Add axis lines
+    legend.position = "none",                   # Remove the legend
+    text = element_text(color = "black"),  # Set font to Calibri
+    axis.text.x = element_text(color = "black", size = 14),  # X-axis text size
+    axis.text.y = element_text(color = "black", size = 14),  # Y-axis text size
+    axis.title.x = element_text(size = 16),    # X-axis title size
+    axis.title.y = element_text(size = 16)      # Y-axis title size
+  ) +
+  labs(x = "Burn Extent",
+       y = "Levoglucosan Yield")
+ggsave("C.png") 
+  
+#Levo:DOC v burn extent
+ggplot(FigureData, aes(x = Burn_Extent_percent, y = Levo_DOC_perc, fill = watershed)) +
+  geom_boxplot(color = "black", size = 1.2, outlier.shape = NA) +  # Box plots
+  geom_jitter(width = 0.0001, color = "black", alpha = 1) +  # Add jittered points
+  scale_fill_manual(values = c("#E94411", "#FF7111", "#FFC44F", "#FFFFCC", "#9E0000")) +  # Customize colors
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_blank(),       # Remove major gridlines
+    panel.grid.minor = element_blank(),       # Remove minor gridlines
+    axis.ticks.length = unit(0.25, "cm"),     # Length of ticks
+    axis.ticks = element_line(size = 1),      # Thickness of tick marks
+    axis.ticks.y = element_line(size = 1),    # Y-axis tick thickness
+    axis.ticks.x = element_line(size = 1),    # X-axis tick thickness
+    axis.line = element_line(size = 1),        # Add axis lines
+    legend.position = "none",                   # Remove the legend
+    text = element_text(color = "black"),  # Set font to Calibri
+    axis.text.x = element_text(color = "black", size = 14),  # X-axis text size
+    axis.text.y = element_text(color = "black", size = 14),  # Y-axis text size
+    axis.title.x = element_text(size = 16),    # X-axis title size
+    axis.title.y = element_text(size = 16)      # Y-axis title size
+  ) +
+  labs(title = "Levoglucosan Concentration by Burn Extent",
+       x = "Burn Extent",
+       y = "Levo:DOC (%)")
+ggsave("D.png") 
+  
+```
+##levo v low severity burn extent
+```{r}
+#levo v burn extent
+ggplot(FigureData, aes(x = Area_low_severity_percent, y = avg_levo_ppb, fill = watershed)) +
+  geom_boxplot(color = "black", size = 1.2, outlier.shape = NA) +  # Box plots
+  scale_fill_manual(values = c("#E94411", "#FF7111", "#FFC44F", "#FFFFCC", "#9E0000")) +  # Customize colors
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_blank(),       # Remove major gridlines
+    panel.grid.minor = element_blank(),       # Remove minor gridlines
+    axis.ticks.length = unit(0.25, "cm"),     # Length of ticks
+    axis.ticks = element_line(size = 1),      # Thickness of tick marks
+    axis.ticks.y = element_line(size = 1),    # Y-axis tick thickness
+    axis.ticks.x = element_line(size = 1),    # X-axis tick thickness
+    axis.line = element_line(size = 1),        # Add axis lines
+    legend.position = "none",                   # Remove the legend
+    text = element_text(color = "black"),  # Set font to Calibri
+    axis.text.x = element_text(color = "black", size = 14),  # X-axis text size
+    axis.text.y = element_text(color = "black", size = 14),  # Y-axis text size
+    axis.title.x = element_text(size = 16),    # X-axis title size
+    axis.title.y = element_text(size = 16)      # Y-axis title size
+  ) +
+  labs(x = "Low Severity Burn Extent",
+       y = "Levoglucosan (ppb)")
+ggsave("E.png") 
+
+#flux_levo v burn extent
+ggplot(FigureData, aes(x = Area_low_severity_percent, y = flux_levo, fill = watershed)) +
+  geom_boxplot(color = "black", size = 1.2, outlier.shape = NA) +  # Box plots
+  scale_fill_manual(values = c("#E94411", "#FF7111", "#FFC44F", "#FFFFCC", "#9E0000")) +  # Customize colors
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_blank(),       # Remove major gridlines
+    panel.grid.minor = element_blank(),       # Remove minor gridlines
+    axis.ticks.length = unit(0.25, "cm"),     # Length of ticks
+    axis.ticks = element_line(size = 1),      # Thickness of tick marks
+    axis.ticks.y = element_line(size = 1),    # Y-axis tick thickness
+    axis.ticks.x = element_line(size = 1),    # X-axis tick thickness
+    axis.line = element_line(size = 1),        # Add axis lines
+    legend.position = "none",                   # Remove the legend
+    text = element_text(color = "black"),  # Set font to Calibri
+    axis.text.x = element_text(color = "black", size = 14),  # X-axis text size
+    axis.text.y = element_text(color = "black", size = 14),  # Y-axis text size
+    axis.title.x = element_text(size = 16),    # X-axis title size
+    axis.title.y = element_text(size = 16)      # Y-axis title size
+  ) +
+  labs(x = "Low Severity Burn Extent",
+       y = "Levoglucosan Flux")
+ggsave("F.png") 
+
+#yield_levo v burn extent
+ggplot(FigureData, aes(x = Area_low_severity_percent, y = yield_levo, fill = watershed)) +
+  geom_boxplot(color = "black", size = 1.2, outlier.shape = NA) +  # Box plots
+  scale_fill_manual(values = c("#E94411", "#FF7111", "#FFC44F", "#FFFFCC", "#9E0000")) +  # Customize colors
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_blank(),       # Remove major gridlines
+    panel.grid.minor = element_blank(),       # Remove minor gridlines
+    axis.ticks.length = unit(0.25, "cm"),     # Length of ticks
+    axis.ticks = element_line(size = 1),      # Thickness of tick marks
+    axis.ticks.y = element_line(size = 1),    # Y-axis tick thickness
+    axis.ticks.x = element_line(size = 1),    # X-axis tick thickness
+    axis.line = element_line(size = 1),        # Add axis lines
+    legend.position = "none",                   # Remove the legend
+    text = element_text(color = "black"),  # Set font to Calibri
+    axis.text.x = element_text(color = "black", size = 14),  # X-axis text size
+    axis.text.y = element_text(color = "black", size = 14),  # Y-axis text size
+    axis.title.x = element_text(size = 16),    # X-axis title size
+    axis.title.y = element_text(size = 16)      # Y-axis title size
+  ) +
+  labs(x = "Low Severity Burn Extent",
+       y = "Levoglucosan Yield")
+ggsave("G.png") 
+
+#Levo:DOC v burn extent
+ggplot(FigureData, aes(x = Area_low_severity_percent, y = Levo_DOC_perc, fill = watershed)) +
+  geom_boxplot(color = "black", size = 1.2, outlier.shape = NA) +  # Box plots
+  scale_fill_manual(values = c("#E94411", "#FF7111", "#FFC44F", "#FFFFCC", "#9E0000")) +  # Customize colors
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_blank(),       # Remove major gridlines
+    panel.grid.minor = element_blank(),       # Remove minor gridlines
+    axis.ticks.length = unit(0.25, "cm"),     # Length of ticks
+    axis.ticks = element_line(size = 1),      # Thickness of tick marks
+    axis.ticks.y = element_line(size = 1),    # Y-axis tick thickness
+    axis.ticks.x = element_line(size = 1),    # X-axis tick thickness
+    axis.line = element_line(size = 1),        # Add axis lines
+    legend.position = "none",                   # Remove the legend
+    text = element_text(color = "black"),  # Set font to Calibri
+    axis.text.x = element_text(color = "black", size = 14),  # X-axis text size
+    axis.text.y = element_text(color = "black", size = 14),  # Y-axis text size
+    axis.title.x = element_text(size = 16),    # X-axis title size
+    axis.title.y = element_text(size = 16)      # Y-axis title size
+  ) +
+  labs(title = "Levoglucosan Concentration by Burn Extent",
+       x = "Low Severity Burn Extent",
+       y = "Levo:DOC (%)")
+ggsave("H.png") 
+```
+
+```{r}
+# Reshape the data to long format, including both x variables
+FigureData_long <- FigureData %>%
+  pivot_longer(cols = c(avg_levo_ppb, flux_levo, yield_levo, Levo_DOC_perc), 
+               names_to = "Measurement", 
+               values_to = "Value") %>%
+  pivot_longer(cols = c(Burn_Extent_percent, Area_low_severity_percent, Area_low_to_mod_severity_percent, Area_mod_to_high_severity_percent), 
+               names_to = "X_Variable", 
+               values_to = "X_Value")
+
+# Create a multi-panel box plot
+ggplot(FigureData_long, aes(x = X_Value, y = Value, fill = watershed)) +
+  geom_boxplot(color = "black", size = 1.2, outlier.shape = NA) +  # Box plots
+  geom_jitter(width = 0.2, color = "black", alpha = 1) +  # Add jittered points
+  scale_fill_manual(values = c("#E94411", "#FF7111", "#FFC44F", "#FFFFCC", "#9E0000")) +  # Customize colors
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_blank(),       # Remove major gridlines
+    panel.grid.minor = element_blank(),       # Remove minor gridlines
+    axis.ticks.length = unit(0.25, "cm"),     # Length of ticks
+    axis.ticks = element_line(size = 1),      # Thickness of tick marks
+    axis.line = element_line(size = 1),        # Add axis lines
+    legend.position = "none",                   # Remove the legend
+    text = element_text(color = "black"),      # Set font color
+    axis.text.x = element_text(color = "black", size = 14),  # X-axis text size
+    axis.text.y = element_text(color = "black", size = 14),  # Y-axis text size
+    axis.title.x = element_text(size = 16),    # X-axis title size
+    axis.title.y = element_text(size = 16)      # Y-axis title size
+  ) +
+  labs(title = "Levoglucosan and Levo:DOC Concentration by Burn Extent and Low Severity",
+       x = "Extent (%)",
+       y = "Concentration") +
+  facet_grid(X_Variable ~ Measurement, scales = "free_y", switch = "y")  # Stac # Create panels 
+```
+
