@@ -1,0 +1,72 @@
+---
+title: "CoastalFires_NMDS"
+author: "rbb"
+date: '`r Sys.Date()`'
+output: html_document
+---
+
+#Load Necessary Libraries
+```{r}
+library("vegan")
+```
+
+#Set Working Directory and load in data frame
+```{r}
+setwd("C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires")
+FigureData <- readr::read_csv("CoastalFires_FigureData.csv")
+```
+
+#Prepare data frame for NMDS
+```{r}
+analyte_data <- FigureData[, c("yield_levo", "yield_DOC", "yield_DBC")]
+View(analyte_data)
+```
+
+#Scale analyte_data to be compatible with a distance matrix
+```{r}
+# Standardize each variable and shift values to be positive
+analyte_data <- scale(analyte_data) # Standardize to z-scores
+analyte_data <- analyte_data - min(analyte_data) # Shift to make all values positive
+View(analyte_data)
+```
+
+#Calculate distance matrix to prepare data for NMDS
+```{r}
+#compute Bray-Curtis distance matrix
+dist_matrix <- vegdist(analyte_data, method = "bray")
+```
+
+#Run NMDS
+```{r}
+nmds_result <- metaMDS(dist_matrix, k = 2, trymax = 100)
+print(nmds_result)
+```
+#Basic NMDS Plot
+```{r}
+plot(nmds_result)
+```
+
+```{r}
+library(ggplot2)
+
+# Extract NMDS scores for plotting
+nmds_scores <- as.data.frame(scores(nmds_result, display = "sites"))
+nmds_scores$Site <- FigureData$watershed  # Add Site info for coloring
+
+ggplot(nmds_scores, aes(x = NMDS1, y = NMDS2, color = Site)) +
+  geom_point(size = 3) +
+  labs(title = "NMDS of Analyte Yields",
+       x = "NMDS1",
+       y = "NMDS2") +
+  theme_minimal()
+```
+#Overlaying environmental variables
+```{r}
+# Environmental variables (adjust to your actual variable names)
+env_variables <- FigureData[, c("", "watershed_area", "discharge")]
+
+envfit_result <- envfit(nmds_result, env_variables, permutations = 999)
+plot(nmds_result)
+plot(envfit_result, col = "blue")  # Adds vectors to plot
+```
+
