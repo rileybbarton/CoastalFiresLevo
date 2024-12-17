@@ -1,0 +1,6 @@
+watershed,Lat,Long,Area_square_kilometer,Average_slope_percent,Average_precipitation_milli_meter,Burn_Extent_percent,Area_low_severity_percent,Area_low_to_mod_severity_percent,Area_mod_to_high_severity_percent,Forest_percent,Shrub_percent,Developed_percent,Sandstone_and_sedimentary_percent,Igneous_percent,Suficial_Sediments_percent,Schist_percent
+San Lorenzo River,37.044037,-122.07214,276,33.3,1020,20,12,7,1,80,17,2,86,8,2,3
+Pescadero Creek,37.260803,-122.32912,118.7,35.6,700,23,15,7,1,93,4,3,94,6,1,0
+Majors Creek,36.99993,-122.11982,9.9,21.4,1040,37,23,12,2,86,6,8,62,37,1,1
+Laguna Creek,37.02469,-122.1309,9,24.4,1160,60,38,20,2,84,5,11,12,40,0,48
+Scott Creek,37.054092,-122.22677,73.5,35.1,970,98,12,45,42,83,2,15,55,42,3,1
