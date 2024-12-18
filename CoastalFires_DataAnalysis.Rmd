@@ -12,29 +12,12 @@ library(tidyverse)
 library(here)
 ```
 
-#load data files and rename them
+#set working director, load data files, and rename them
 ```{r}
+setwd("C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/")
 CombinedData <- readr::read_csv("CoastalFires_CombinedData.csv")
-DischargeData <- readr::read_csv("CoastalFires_Discharge.csv")
+DischargeData <- readr::read_csv("CoastalFires_DischargeData.csv")
 ``` 
-#add columns for flux (i.e., concentration multiplied by discharge) and yield (i.e., flux divided by watershed area)
-```{r}
-#flux
-CombinedData$flux_levo <- with(CombinedData, CombinedData$avg_levo_ppb / CombinedData$Q_cms)
-CombinedData$flux_DOC <- with(CombinedData, CombinedData$DOC_mgC_per_L / CombinedData$Q_cms)
-CombinedData$flux_DBC <- with(CombinedData, CombinedData$DBC_mgC_per_L / CombinedData$Q_cms)
-
-#yield
-CombinedData$yield_levo <- with(CombinedData, CombinedData$flux_levo / CombinedData$Area_square_kilometer)
-CombinedData$yield_DOC <- with(CombinedData, CombinedData$flux_DOC / CombinedData$Area_square_kilometer)
-CombinedData$yield_DBC <- with(CombinedData, CombinedData$flux_DBC / CombinedData$Area_square_kilometer)
-
-print(CombinedData)
-
-#save file for use in figure making
-write.csv(CombinedData, "CoastalFires_FigureData.csv", row.names = FALSE)
-```
-
 Test data for normality using Shapiro-Wilk Test
 ```{r}
 #are all variables normally distributed?
@@ -60,7 +43,7 @@ print(shapiro_df)
 #The differences of concentrations and key ratios by watershed
 ```{r}
 #is the concentration of levoglucosan different across watersheds?
-kruskal_test_levo <- kruskal.test(avg_levo_ppb ~ watershed, data = CombinedData)
+kruskal_test_levo <- kruskal.test(levo_micro_gram_per_liter ~ watershed, data = CombinedData)
 print(kruskal_test_levo)
 kruskal_test_flux_levo <- kruskal.test(flux_levo ~ watershed, data = CombinedData)
 print(kruskal_test_flux_levo)
@@ -73,6 +56,7 @@ print(kruskal_test_levotoDOC)
 kruskal_test_levotoDBC <- kruskal.test(Levo_DBC ~ watershed, data = CombinedData)
 print(kruskal_test_levotoDBC)
 ```
+
 #since there is a significant difference between watersheds for levoglucosan flux and levoglucosan yield, what watersheds are significantly different?
 ```{r}
 wilcoxon_test_flux_levo <- pairwise.wilcox.test(CombinedData$flux_levo, CombinedData$watershed, p.adjust.method = "bonferroni")
@@ -84,16 +68,9 @@ print(wilcoxon_test_yield_levo)
 
 #Time since fire - Spearman's rank
 ```{r}
-#Ensuring that the Date column is correctly classified as a date rather than a character
-CombinedData$date <- as.Date(CombinedData$date, format = "%d-%b-%y")
-
-#Calculating the time since fire for all samples and ensuring it is a numeric value
-fire_date <- as.Date("2020-08-16")
-CombinedData$time_since_fire_day <- as.numeric(CombinedData$date - fire_date)
-
 #make a table to showcase the coefficients and p-values
 # Perform Spearman's rank correlation using the averaged data
-spearman_corr_levo_ppb <- cor.test(CombinedData$time_since_fire_day, CombinedData$avg_levo_ppb, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_levo_ppb <- cor.test(CombinedData$time_since_fire_day, CombinedData$levo_micro_gram_per_liter, method = "spearman", use = "pairwise.complete.obs")
 
 spearman_corr_flux_levo <- cor.test(CombinedData$time_since_fire_day, CombinedData$flux_levo, method = "spearman", use = "pairwise.complete.obs")
 
@@ -133,29 +110,29 @@ print(results)
 #Miscellaneous Correlation Significant Tests for Levoglucosan Concentrations
 ``` {r}
 #by burn extent
-spearman_corr_BE <- cor.test(CombinedData$Burn_Extent_percent, CombinedData$avg_levo_ppb, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_BE <- cor.test(CombinedData$Burn_Extent_percent, CombinedData$levo_micro_gram_per_liter, method = "spearman", use = "pairwise.complete.obs")
 #by low severity burn extent
-spearman_corr_BElow <- cor.test(CombinedData$Area_low_severity_percent, CombinedData$avg_levo_ppb, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_BElow <- cor.test(CombinedData$Area_low_severity_percent, CombinedData$levo_micro_gram_per_liter, method = "spearman", use = "pairwise.complete.obs")
 #by low to moderate severity burn extent
-spearman_corr_BElowtomod <- cor.test(CombinedData$Area_low_to_mod_severity_percent, CombinedData$avg_levo_ppb, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_BElowtomod <- cor.test(CombinedData$Area_low_to_mod_severity_percent, CombinedData$levo_micro_gram_per_liter, method = "spearman", use = "pairwise.complete.obs")
 #by moderate to high severity burn extent
-spearman_corr_BEmodtohigh <- cor.test(CombinedData$Area_mod_to_high_severity_percent, CombinedData$avg_levo_ppb, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_BEmodtohigh <- cor.test(CombinedData$Area_mod_to_high_severity_percent, CombinedData$levo_micro_gram_per_liter, method = "spearman", use = "pairwise.complete.obs")
 #by watershed area
-spearman_corr_area <- cor.test(CombinedData$Area_square_kilometer, CombinedData$avg_levo_ppb, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_area <- cor.test(CombinedData$Area_square_kilometer, CombinedData$levo_micro_gram_per_liter, method = "spearman", use = "pairwise.complete.obs")
 #by watershed slope
-spearman_corr_slope <- cor.test(CombinedData$Average_slope_percent, CombinedData$avg_levo_ppb, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_slope <- cor.test(CombinedData$Average_slope_percent, CombinedData$levo_micro_gram_per_liter, method = "spearman", use = "pairwise.complete.obs")
 #by discharge
-spearman_corr_Q <- cor.test(CombinedData$Q_cms, CombinedData$avg_levo_ppb, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_Q <- cor.test(CombinedData$Q_m_sq_per_sec, CombinedData$levo_micro_gram_per_liter, method = "spearman", use = "pairwise.complete.obs")
 
 # Extract p-values and rho values
 results <- data.frame(
-  Comparison = c("avg_levo_ppb vs burn_extent",
-                  "avg_levo_ppb vs low burn_extent",
-                  "avg_levo_ppb vs low-mod burn_extent",
-                 "avg_levo_ppb vs mod-high burn extent", 
-                 "avg_levo_ppb vs watershed area", 
-                 "avg_levo_ppb vs watershed slope",
-                 "avg_levo_ppb vs discharge"),
+  Comparison = c("levo_ppb vs burn_extent",
+                  "levo_ppb vs low burn_extent",
+                  "levo_ppb vs low-mod burn_extent",
+                 "levo_ppb vs mod-high burn extent", 
+                 "levo_ppb vs watershed area", 
+                 "levo_ppb vs watershed slope",
+                 "levo_ppb vs discharge"),
   Rho = c(spearman_corr_BE$estimate,
           spearman_corr_BElow$estimate,
           spearman_corr_BElowtomod$estimate,
@@ -286,7 +263,7 @@ spearman_corr_area <- cor.test(CombinedData$Area_square_kilometer, CombinedData$
 #by watershed slope
 spearman_corr_slope <- cor.test(CombinedData$Average_slope_percent, CombinedData$Levo_DOC_perc, method = "spearman", use = "pairwise.complete.obs")
 #by discharge
-spearman_corr_Q <- cor.test(CombinedData$Q_cms, CombinedData$Levo_DOC_perc, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_Q <- cor.test(CombinedData$Q_m_sq_per_sec, CombinedData$Levo_DOC_perc, method = "spearman", use = "pairwise.complete.obs")
 
 #Extract p-values and rho values
 results <- data.frame(
@@ -319,9 +296,276 @@ print(results)
 
 ```
 
-#NMDS for levoglucosan :)
+#Random Forest Models
 ```{r}
+install.packages("randomForest")
+install.packages("caret")  # Optional, for additional tools like cross-validation
+library(randomForest)
+library(caret)
+```
+
+#prepare data for RFM
+```{r}
+#remove any missing values
+na.omit(CombinedData) 
+#ensure categorical variables are factors
+CombinedData$watershed <- as.factor(CombinedData$watershed) 
+```
+
+#RFM for Levo
+```{r}
+#Split levoglucosan dataset into model and test datasets
+set.seed(123)  # For reproducibility
+train_idx <- createDataPartition(CombinedData$levo_micro_gram_per_liter, p = 0.7, list = FALSE)
+train_data <- CombinedData[train_idx, ]
+test_data <- CombinedData[-train_idx, ]
+
+#Fit the RFM to the levoglucosan dataset
+
+# Build the model on the training data
+rf_levoglucosan <- randomForest(
+    levo_micro_gram_per_liter ~ time_since_fire_day + Q_m_sq_per_sec + Area_square_kilometer + Average_slope_percent + Burn_Extent_percent + Area_low_severity_percent + Area_low_to_mod_severity_percent + Area_mod_to_high_severity_percent,
+    data = train_data,
+    importance = TRUE,
+    ntree = 500
+)
+
+# Print a summary of the model
+print(rf_levoglucosan)
+varImpPlot(rf_levoglucosan)
+
+#Evaluate RFM Performance
+
+#predict of the test set
+predictions <- predict(rf_levoglucosan, newdata = test_data)
+
+#assess model accuracy
+# Calculate RMSE and R²
+rmse <- sqrt(mean((predictions - test_data$levo_micro_gram_per_liter)^2))
+r_squared <- cor(predictions, test_data$levo_micro_gram_per_liter)^2
+
+cat("RMSE:", rmse, "\n")
+cat("R²:", r_squared, "\n")
+
+#Analyze varibale importance
+#something
+importance(rf_levoglucosan)
+
+#visualize variable importance
+varImpPlot(rf_levoglucosan)
+
+#Tune the RFM
+
+control <- trainControl(method = "cv", number = 5)  # 5-fold cross-validation
+
+tune_grid <- expand.grid(
+    .mtry = seq(2, ncol(train_data) - 1, by = 1)  # Tune mtry
+)
+
+rf_tuned <- train(
+    levo_micro_gram_per_liter ~ time_since_fire_day + Q_m_sq_per_sec + Area_square_kilometer + Average_slope_percent + Burn_Extent_percent + Area_low_severity_percent + Area_low_to_mod_severity_percent + Area_mod_to_high_severity_percent,
+    data = train_data,
+    method = "rf",
+    tuneGrid = tune_grid,
+    trControl = control,
+    importance = TRUE
+)
+
+#use best model
+levo_best_rf_model <- rf_tuned$finalModel
+varImpPlot(levo_best_rf_model)
+```
+#RFM for for dissolved black carbon :) 
+```{r}
+#Split DBC dataset into model and test datasets
+set.seed(123)  # For reproducibility
+DBC_train_idx <- createDataPartition(CombinedData$DBC_mgC_per_L, p = 0.7, list = FALSE)
+DBC_train_data <- CombinedData[train_idx, ]
+DBC_test_data <- CombinedData[-train_idx, ]
+
+#Fit the RFM to the levoglucosan dataset
+
+# Build the model on the training data
+rf_DBC <- randomForest(
+    DBC_mgC_per_L ~ time_since_fire_day + Q_m_sq_per_sec + Area_square_kilometer + Average_slope_percent + Burn_Extent_percent + Area_low_severity_percent + Area_low_to_mod_severity_percent + Area_mod_to_high_severity_percent,
+    data = train_data,
+    importance = TRUE,
+    ntree = 500
+)
+
+# Print a summary of the model
+print(rf_DBC)
+varImpPlot(rf_DBC)
+
+#Evaluate RFM Performance
+#predict of the test set
+predictions <- predict(rf_DBC, newdata = DBC_test_data)
+
+#assess model accuracy
+# Calculate RMSE and R²
+rmse <- sqrt(mean((predictions - DBC_test_data$DBC_mgC_per_L)^2))
+r_squared <- cor(predictions, DBC_test_data$DBC_mgC_per_L)^2
+
+cat("RMSE:", rmse, "\n")
+cat("R²:", r_squared, "\n")
+
+##Analyze varibale importance
+
+#something
+importance(rf_DBC)
+
+#visualize variable importance
+varImpPlot(rf_DBC)
+
+#tune the DBC RFM
+control <- trainControl(method = "cv", number = 5)  # 5-fold cross-validation
+
+tune_grid <- expand.grid(
+    .mtry = seq(2, ncol(DBC_train_data) - 1, by = 1)  # Tune mtry
+)
+
+DBC_rf_tuned <- train(
+    DBC_mgC_per_L ~ time_since_fire_day + Q_m_sq_per_sec + Area_square_kilometer + Average_slope_percent + Burn_Extent_percent + Area_low_severity_percent + Area_low_to_mod_severity_percent + Area_mod_to_high_severity_percent,
+    data = train_data,
+    method = "rf",
+    tuneGrid = tune_grid,
+    trControl = control,
+    importance = TRUE
+)
 
 
+#use best model
+DBC_best_rf_model <- DBC_rf_tuned$finalModel
+varImpPlot(DBC_best_rf_model)
 
 ```
+
+#RFM for Levo:DOC :) 
+```{r}
+#Split DBC dataset into model and test datasets
+set.seed(123)  # For reproducibility
+LevoDOC_train_idx <- createDataPartition(CombinedData$Levo_DOC_perc, p = 0.7, list = FALSE)
+LevoDOC_train_data <- CombinedData[train_idx, ]
+LevoDOC_test_data <- CombinedData[-train_idx, ]
+
+#Fit the RFM to the levoglucosan dataset
+
+# Build the model on the training data
+rf_LevoDOC <- randomForest(
+    Levo_DOC_perc ~ time_since_fire_day + Q_m_sq_per_sec + Area_square_kilometer + Average_slope_percent + Burn_Extent_percent + Area_low_severity_percent + Area_low_to_mod_severity_percent + Area_mod_to_high_severity_percent,
+    data = train_data,
+    importance = TRUE,
+    ntree = 500
+)
+
+# Print a summary of the model
+print(rf_LevoDOC)
+varImpPlot(rf_LevoDOC)
+
+#Evaluate RFM Performance
+#predict of the test set
+predictions <- predict(rf_LevoDOC, newdata = LevoDOC_test_data)
+
+#assess model accuracy
+# Calculate RMSE and R²
+rmse <- sqrt(mean((predictions - LevoDOC_test_data$Levo_DOC_perc)^2))
+r_squared <- cor(predictions, LevoDOC_test_data$Levo_DOC_perc)^2
+
+cat("RMSE:", rmse, "\n")
+cat("R²:", r_squared, "\n")
+
+##Analyze varibale importance
+
+#something
+importance(rf_LevoDOC)
+
+#visualize variable importance
+varImpPlot(rf_LevoDOC)
+
+#tune the DBC RFM
+control <- trainControl(method = "cv", number = 5)  # 5-fold cross-validation
+
+tune_grid <- expand.grid(
+    .mtry = seq(2, ncol(LevoDOC_train_data) - 1, by = 1)  # Tune mtry
+)
+
+LevoDOC_rf_tuned <- train(
+    Levo_DOC_perc ~ time_since_fire_day + Q_m_sq_per_sec + Area_square_kilometer + Average_slope_percent + Burn_Extent_percent + Area_low_severity_percent + Area_low_to_mod_severity_percent + Area_mod_to_high_severity_percent,
+    data = train_data,
+    method = "rf",
+    tuneGrid = tune_grid,
+    trControl = control,
+    importance = TRUE
+)
+
+
+#use best model
+LevoDOC_best_rf_model <- DBC_rf_tuned$finalModel
+varImpPlot(LevoDOC_best_rf_model)
+
+```
+#RFM for DBC:DOC :) 
+```{r}
+#Split DBC dataset into model and test datasets
+set.seed(123)  # For reproducibility
+DBCDOC_train_idx <- createDataPartition(CombinedData$DBC_DOC_perc, p = 0.7, list = FALSE)
+DBCDOC_train_data <- CombinedData[train_idx, ]
+DBCDOC_test_data <- CombinedData[-train_idx, ]
+
+#Fit the RFM to the levoglucosan dataset
+
+# Build the model on the training data
+rf_DBCDOC <- randomForest(
+    DBC_DOC_perc ~ time_since_fire_day + Q_m_sq_per_sec + Area_square_kilometer + Average_slope_percent + Burn_Extent_percent + Area_low_severity_percent + Area_low_to_mod_severity_percent + Area_mod_to_high_severity_percent,
+    data = train_data,
+    importance = TRUE,
+    ntree = 500
+)
+
+# Print a summary of the model
+print(rf_DBCDOC)
+varImpPlot(rf_LevoDOC)
+
+#Evaluate RFM Performance
+#predict of the test set
+predictions <- predict(rf_DBCDOC, newdata = DBCDOC_test_data)
+
+#assess model accuracy
+# Calculate RMSE and R²
+rmse <- sqrt(mean((predictions - DBCDOC_test_data$DBC_DOC_perc)^2))
+r_squared <- cor(predictions, DBCDOC_test_data$DBC_DOC_perc)^2
+
+cat("RMSE:", rmse, "\n")
+cat("R²:", r_squared, "\n")
+
+##Analyze varibale importance
+
+#something
+importance(rf_DBCDOC)
+
+#visualize variable importance
+varImpPlot(rf_DBCDOC)
+
+#tune the DBC RFM
+control <- trainControl(method = "cv", number = 5)  # 5-fold cross-validation
+
+tune_grid <- expand.grid(
+    .mtry = seq(2, ncol(DBCDOC_train_data) - 1, by = 1)  # Tune mtry
+)
+
+DBCDOC_rf_tuned <- train(
+    DBC_DOC_perc ~ time_since_fire_day + Q_m_sq_per_sec + Area_square_kilometer + Average_slope_percent + Burn_Extent_percent + Area_low_severity_percent + Area_low_to_mod_severity_percent + Area_mod_to_high_severity_percent,
+    data = train_data,
+    method = "rf",
+    tuneGrid = tune_grid,
+    trControl = control,
+    importance = TRUE
+)
+
+
+#use best model
+DBCDOC_best_rf_model <- DBC_rf_tuned$finalModel
+varImpPlot(DBCDOC_best_rf_model)
+
+```
+

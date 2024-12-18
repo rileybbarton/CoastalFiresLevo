@@ -14,7 +14,7 @@ library(here)
 ```
 Set Working Directory
 ```{r}
-setwd("C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/Input Files")
+setwd("C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/")
 ```
 
 Load datafiles: levoglucosan data, discharge data, watershed and burn severity data, and previously published organic carbon and black carbon data
@@ -25,37 +25,18 @@ WatershedData <- readr::read_csv("CoastalFires_WatershedData.csv")
 DischargeData <- readr::read_csv("CoastalFires_DischargeData.csv")
 ``` 
 
-Adjust LevoData by averaging replicates and removing unnecessary information
-```{r}
-#delete excess columns
-LevoData <- LevoData %>% select(-relative_area_levo, -relative_amount_levo, -levoglucosan_area, -C13_levoglucosan_area, -c13_levo_ppb)
-#rearrange columns to get sample_id and replicate number
-library(stringr)
-LevoData$sample_id <- str_extract(LevoData$header, "(?<=-).*")
-LevoData$replicate <- str_extract(LevoData$header, "(?<=R)[0-2]+")
-#remove non-data (i.e., standards)
-LevoData <- LevoData %>% filter(!is.na(replicate))
-#remove any naming errors
-LevoData[LevoData == 'SAN-7DUP'] <- 'SAN-7'
-#average replicates
-LevoData <- LevoData %>% group_by(sample_id) %>% summarize(levo_ppb=mean(levo_ppb))
-print(LevoData)
-```
-
 Adjust the PublishedData data frame to remove unnecessary information
 ```{r}
 #adjust the published data frame
 #remove excess columns and print
-PublishedData <- PublishedData %>% select(-TSS_mg_per_L, -POC_mgC_per_L, -PBC_mgC_per_L, -PBC_TSS_perc, -PBC_POC_perc, -pB6CA_nM,-pB5CA_nM, -pB6CA_B5CA)
-print(PublishedData)
+BlackCarbonData <- BlackCarbonData %>% select(-TSS_mg_per_L, -POC_mgC_per_L, -PBC_mgC_per_L, -PBC_TSS_perc, -PBC_POC_perc, -pB6CA_nM,-pB5CA_nM, -pB6CA_B5CA)
+print(BlackCarbonData)
 ```
 
 Combine LevoData, WatershedData, and PublishedData Data Frames to one centralized dataframe: CoastalFires_CombinedData
 ```{r}
 #combine data frames
-Data <- left_join(LevoData, PublishedData, by = "sample_id")
-#rearrange column order to move levo_ppb after DOC
-Data <- Data %>% select(sample_id, watershed, date, time, lat, long, Q_m_sq_per_sec, flow_cat, lagoon, DOC_mgC_per_L, levo_ppb, DBC_mgC_per_L, everything())
+Data <- left_join(LevoData, BlackCarbonData, by = "sample_id")
 #exclude samples taken at lagoon dowstream of Scott sampling site
 Data <- subset(Data, Data$sample_id != "SCT-7")
 Data <- subset(Data, Data$sample_id != "SCT-8")
@@ -69,15 +50,15 @@ print(CoastalFires_CombinedData)
 #Calculate levoclucosan ratios
 ```{r}
 #calculate the ratio of levoglucosan to bulk DOC and DBC
-CoastalFires_CombinedData$Levo_DOC_perc <- Data$levo_ppb/1000/Data$DOC_mgC_per_L*100
-CoastalFires_CombinedData$Levo_DBC <- Data$levo_ppb/1000/Data$DBC_mgC_per_L
+CoastalFires_CombinedData$Levo_DOC_perc <- Data$levo_micro_gram_per_liter/1000/Data$DOC_mgC_per_L*100
+CoastalFires_CombinedData$Levo_DBC <- Data$levo_micro_gram_per_liter/1000/Data$DBC_mgC_per_L
 print(CoastalFires_CombinedData)
 ```
 
 #Calculate fluxes and yields
 ```{r}
 #flux
-CoastalFires_CombinedData$flux_levo <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$levo_ppb * CoastalFires_CombinedData$Q_m_sq_per_sec)
+CoastalFires_CombinedData$flux_levo <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$levo_micro_gram_per_liter * CoastalFires_CombinedData$Q_m_sq_per_sec)
 CoastalFires_CombinedData$flux_DOC <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$DOC_mgC_per_L * CoastalFires_CombinedData$Q_m_sq_per_sec)
 CoastalFires_CombinedData$flux_DBC <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$DBC_mgC_per_L * CoastalFires_CombinedData$Q_m_sq_per_sec)
 
@@ -88,13 +69,38 @@ CoastalFires_CombinedData$yield_DBC <- with(CoastalFires_CombinedData, CoastalFi
 
 print(CoastalFires_CombinedData)
 ```
+#Calculating a "Time Since Fire" metric
+```{r}
+#Ensuring that the Date column is correctly classified as a date rather than a character
+CoastalFires_CombinedData$date <- as.Date(CoastalFires_CombinedData$date, format = "%d-%b-%y")
+
+#Calculating the time since fire for all samples and ensuring it is a numeric value
+fire_date <- as.Date("2020-08-16")
+CoastalFires_CombinedData$time_since_fire_day <- as.numeric(CoastalFires_CombinedData$date - fire_date)
+print(CoastalFires_CombinedData)
+```
 
 Re-arranged columns and change column names
 ```{r}
+# Specify the desired column order
+desired_order <- c("sample_id", "watershed", "date", "time","time_since_fire_day", "lat", "long", 
+                   "Q_m_sq_per_sec", "flow_cat", "lagoon", "DOC_mgC_per_L", 
+                   "levo_micro_gram_per_liter", "std_levo_micro_gram_per_liter", 
+                   "DBC_mgC_per_L", "DBC_DOC_perc", "dB6CA_nM", "dB5CA_nM", 
+                   "dB6CA_B5CA", "Levo_DOC_perc", "Levo_DBC", "flux_levo", 
+                   "flux_DOC", "flux_DBC", "yield_levo", "yield_DOC", 
+                   "yield_DBC", "a254_per_m", "SUVA254_L_per_mgC_per_m", 
+                   "Area_square_kilometer", "Average_slope_percent", 
+                   "Average_precipitation_milli_meter", "Burn_Extent_percent", 
+                   "Area_low_severity_percent", "Area_low_to_mod_severity_percent", 
+                   "Area_mod_to_high_severity_percent", "Forest_percent", 
+                   "Shrub_percent", "Developed_percent", 
+                   "Sandstone_and_sedimentary_percent", "Igneous_percent", 
+                   "Suficial_Sediments_percent", "Schist_percent")
 
-
+# Rearrange the columns
+CoastalFires_CombinedData <- CoastalFires_CombinedData[, desired_order]
 ```
-
 
 Create a csv file of the combined dataset:CoastalFires_CombinedData
 ```{r}
