@@ -10,6 +10,10 @@ library(ggplot2)
 library(dplyr)
 library(tidyverse)
 library(here)
+library(randomForest)
+library(caret)
+library(vegan)
+library(ggrepel)
 ```
 
 #set working director, load data files, and rename them
@@ -40,15 +44,14 @@ rownames(shapiro_df) <- NULL
 # Print readable results
 print(shapiro_df)
 ```
+
 #The differences of concentrations and key ratios by watershed
 ```{r}
 #is the concentration of levoglucosan different across watersheds?
 kruskal_test_levo <- kruskal.test(levo_micro_gram_per_liter ~ watershed, data = CombinedData)
 print(kruskal_test_levo)
-kruskal_test_flux_levo <- kruskal.test(flux_levo ~ watershed, data = CombinedData)
-print(kruskal_test_flux_levo)
-kruskal_test_yield_levo <- kruskal.test(yield_levo ~ watershed, data = CombinedData)
-print(kruskal_test_yield_levo)
+kruskal_test_Qnorm_levo <- kruskal.test(Q_norm_levo ~ watershed, data = CombinedData)
+print(kruskal_test_Qnorm_levo)
 #is the ratio of levoglucosan to bulk DOC different across watersheds?
 kruskal_test_levotoDOC <- kruskal.test(Levo_DOC_perc ~ watershed, data = CombinedData)
 print(kruskal_test_levotoDOC)
@@ -57,13 +60,11 @@ kruskal_test_levotoDBC <- kruskal.test(Levo_DBC ~ watershed, data = CombinedData
 print(kruskal_test_levotoDBC)
 ```
 
-#since there is a significant difference between watersheds for levoglucosan flux and levoglucosan yield, what watersheds are significantly different?
+#since there is a significant difference between watersheds for Q-norm levoglucosan are significantly different?
 ```{r}
-wilcoxon_test_flux_levo <- pairwise.wilcox.test(CombinedData$flux_levo, CombinedData$watershed, p.adjust.method = "bonferroni")
-print(wilcoxon_test_flux_levo)
-
-wilcoxon_test_yield_levo <- pairwise.wilcox.test(CombinedData$yield_levo, CombinedData$watershed, p.adjust.method = "bonferroni")
-print(wilcoxon_test_yield_levo)
+#Q_norm_levo is the concentration of levoglucosan divided by discharge
+wilcoxon_test_Qnorm_levo <- pairwise.wilcox.test(CombinedData$Q_norm_levo, CombinedData$watershed, p.adjust.method = "bonferroni")
+print(wilcoxon_test_Qnorm_levo)
 ```
 
 #Time since fire - Spearman's rank
@@ -72,9 +73,7 @@ print(wilcoxon_test_yield_levo)
 # Perform Spearman's rank correlation using the averaged data
 spearman_corr_levo_ppb <- cor.test(CombinedData$time_since_fire_day, CombinedData$levo_micro_gram_per_liter, method = "spearman", use = "pairwise.complete.obs")
 
-spearman_corr_flux_levo <- cor.test(CombinedData$time_since_fire_day, CombinedData$flux_levo, method = "spearman", use = "pairwise.complete.obs")
-
-spearman_corr_yield_levo <- cor.test(CombinedData$time_since_fire_day, CombinedData$yield_levo, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_Qnorm_levo <- cor.test(CombinedData$time_since_fire_day, CombinedData$Q_norm_levo, method = "spearman", use = "pairwise.complete.obs")
 
 spearman_corr_levoDOC <- cor.test(CombinedData$time_since_fire_day, CombinedData$Levo_DOC_perc, method = "spearman", use = "pairwise.complete.obs")
 
@@ -85,20 +84,17 @@ spearman_corr_dbcDOC <- cor.test(CombinedData$time_since_fire_day, CombinedData$
 # Extract p-values and rho values
 results <- data.frame(
   Comparison = c("time_since_fire_day vs levo_ppb",
-                  "time_since_fire_day vs flux_levo",
-                 "time_since_fire_day vs yield_levo",
+                  "time_since_fire_day vs Qnorm_levo",
                  "time_since_fire_day vs levoDOC",
                   "time_since_fire_day vs DBC",
                   "time_since_fire_day vs dbcDOC"),
   Rho = c(spearman_corr_levo_ppb$estimate,
-          spearman_corr_flux_levo$estimate,
-          spearman_corr_yield_levo$estimate,
+          spearman_corr_Qnorm_levo$estimate,
           spearman_corr_levoDOC$estimate,
           spearman_corr_DBC_ppm$estimate,
           spearman_corr_dbcDOC$estimate),
   P_Value = c(spearman_corr_levo_ppb$p.value,
-              spearman_corr_flux_levo$p.value,
-              spearman_corr_yield_levo$p.value,
+              spearman_corr_Qnorm_levo$p.value,
               spearman_corr_levoDOC$p.value,
               spearman_corr_DBC_ppm$p.value,
               spearman_corr_dbcDOC$p.value)
@@ -107,6 +103,7 @@ results <- data.frame(
 # Print the results table
 print(results)
 ```
+
 #Miscellaneous Correlation Significant Tests for Levoglucosan Concentrations
 ``` {r}
 #by burn extent
@@ -155,31 +152,31 @@ print(results)
 
 ```
 
-#Miscellaneous Correlation Significant Tests for Levoglucosan Flux
+#Miscellaneous Correlation Significant Tests for Discharge normalized Levoglucosan concentrations
 ``` {r}
 #by burn extent
-spearman_corr_BE <- cor.test(CombinedData$Burn_Extent_percent, CombinedData$flux_levo, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_BE <- cor.test(CombinedData$Burn_Extent_percent, CombinedData$Q_norm_levo, method = "spearman", use = "pairwise.complete.obs")
 #by low severity burn extent
-spearman_corr_BElow <- cor.test(CombinedData$Area_low_severity_percent, CombinedData$flux_levo, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_BElow <- cor.test(CombinedData$Area_low_severity_percent, CombinedData$Q_norm_levo, method = "spearman", use = "pairwise.complete.obs")
 #by low to moderate severity burn extent
-spearman_corr_BElowtomod <- cor.test(CombinedData$Area_low_to_mod_severity_percent, CombinedData$flux_levo, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_BElowtomod <- cor.test(CombinedData$Area_low_to_mod_severity_percent, CombinedData$Q_norm_levo, method = "spearman", use = "pairwise.complete.obs")
 #by moderate to high severity burn extent
-spearman_corr_BEmodtohigh <- cor.test(CombinedData$Area_mod_to_high_severity_percent, CombinedData$flux_levo, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_BEmodtohigh <- cor.test(CombinedData$Area_mod_to_high_severity_percent, CombinedData$Q_norm_levo, method = "spearman", use = "pairwise.complete.obs")
 #by watershed area
-spearman_corr_area <- cor.test(CombinedData$Area_square_kilometer, CombinedData$flux_levo, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_area <- cor.test(CombinedData$Area_square_kilometer, CombinedData$Q_norm_levo, method = "spearman", use = "pairwise.complete.obs")
 #by watershed slope
-spearman_corr_slope <- cor.test(CombinedData$Average_slope_percent, CombinedData$flux_levo, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_slope <- cor.test(CombinedData$Average_slope_percent, CombinedData$Q_norm_levo, method = "spearman", use = "pairwise.complete.obs")
 
 
 # Extract p-values and rho values
 results <- data.frame(
-  Comparison = c("flux_levo vs burn_extent",
-                  "flux_levo vs low burn_extent",
-                  "flux_levo vs low-mod burn_extent",
-                 "flux_levo vs mod-high burn extent", 
-                 "flux_levo vs watershed area", 
-                 "flux_levo vs watershed slope",
-                 "flux_levo vs discharge"),
+  Comparison = c("Qnorm_levo vs burn_extent",
+                  "Qnorm_levo vs low burn_extent",
+                  "Qnorm_levo vs low-mod burn_extent",
+                 "Qnorm_levo vs mod-high burn extent", 
+                 "Qnorm_levo vs watershed area", 
+                 "Qnorm_levo vs watershed slope",
+                 "Qnorm_levo vs discharge"),
   Rho = c(spearman_corr_BE$estimate,
           spearman_corr_BElow$estimate,
           spearman_corr_BElowtomod$estimate,
@@ -198,54 +195,6 @@ results <- data.frame(
 
 # Print the results table
 print(results)
-
-
-```
-#Miscellaneous Correlations with Levoglucosan Yield
-``` {r}
-#by burn extent
-spearman_corr_BE <- cor.test(CombinedData$Burn_Extent_percent, CombinedData$yield_levo, method = "spearman", use = "pairwise.complete.obs")
-#by low severity burn extent
-spearman_corr_BElow <- cor.test(CombinedData$Area_low_severity_percent, CombinedData$yield_levo, method = "spearman", use = "pairwise.complete.obs")
-#by low to moderate severity burn extent
-spearman_corr_BElowtomod <- cor.test(CombinedData$Area_low_to_mod_severity_percent, CombinedData$yield_levo, method = "spearman", use = "pairwise.complete.obs")
-#by moderate to high severity burn extent
-spearman_corr_BEmodtohigh <- cor.test(CombinedData$Area_mod_to_high_severity_percent, CombinedData$yield_levo, method = "spearman", use = "pairwise.complete.obs")
-#by watershed area
-spearman_corr_area <- cor.test(CombinedData$Area_square_kilometer, CombinedData$yield_levo, method = "spearman", use = "pairwise.complete.obs")
-#by watershed slope
-spearman_corr_slope <- cor.test(CombinedData$Average_slope_percent, CombinedData$yield_levo, method = "spearman", use = "pairwise.complete.obs")
-
-
-# Extract p-values and rho values
-results <- data.frame(
-  Comparison = c("yield_levo vs burn_extent",
-                  "yield_levo vs low burn_extent",
-                  "yield_levo vs low-mod burn_extent",
-                 "yield_levo vs mod-high burn extent", 
-                 "yield_levo vs watershed area", 
-                 "yield_levo vs watershed slope",
-                 "yield_levo vs discharge"),
-  Rho = c(spearman_corr_BE$estimate,
-          spearman_corr_BElow$estimate,
-          spearman_corr_BElowtomod$estimate,
-          spearman_corr_BEmodtohigh$estimate,
-          spearman_corr_area$estimate,
-          spearman_corr_slope$estimate,
-          spearman_corr_Q$estimate),
-  P_Value = c(spearman_corr_BE$p.value,
-              spearman_corr_BElow$p.value,
-              spearman_corr_BElowtomod$p.value,
-              spearman_corr_BEmodtohigh$p.value,
-              spearman_corr_area$p.value,
-              spearman_corr_slope$p.value,
-              spearman_corr_Q$p.value)
-)
-
-# Print the results table
-print(results)
-
-
 ```
 
 #Miscellaneous Correlation Significant Tests for Levo:DOC
@@ -292,17 +241,109 @@ results <- data.frame(
 
 # Print the results table
 print(results)
-
-
 ```
+
+#NMDS
+#Prepare data for NMDS
+```{r}
+#Isolate PyC concentrations and relevant ratios 
+PyC_conc_rat <- CombinedData[, c("levo_micro_gram_per_liter", "DOC_mgC_per_L", "DBC_mgC_per_L", "DBC_DOC_perc", "Levo_DOC_perc")]
+
+#put levoglucosan concentrations into the same units as DOC and DBC
+PyC_conc_rat$levo_mg_per_L <- PyC_conc_rat$levo_micro_gram_per_liter/1000 #dividing micrograms per liter by 1000 to get levoglucosan concentrations in milligrams per liter
+
+#delete the levoglucosan column with concentrations in micrograms per liter
+analyte_data_conc_rat <- PyC_conc_rat[,c("levo_mg_per_L", "DOC_mgC_per_L", "DBC_mgC_per_L", "DBC_DOC_perc", "Levo_DOC_perc")]
+
+View(analyte_data_conc_rat)
+```
+
+#Run NMDS
+```{r}
+nmds_result <- metaMDS(analyte_data_conc_rat, k = 2, trymax = 100)
+print(nmds_result)
+```
+
+
+#Plot NMDS Results
+```{r}
+# Extract NMDS scores for plotting
+nmds_scores <- as.data.frame(scores(nmds_result, display = "sites"))
+nmds_species<-as.data.frame(scores(nmds_result, display="species"))
+nmds_scores$Site <- CombinedData$watershed  # Add Site info for coloring
+nmds_scores$time <- CombinedData$time_since_fire_day #this is for coloring the data points by time
+nmds_scores$watershed <- CombinedData$watershed #this is for the point shape by watershed
+
+# Environmental variables (adjust to your desired variables)
+env_variables <- CombinedData[c("time_since_fire_day", "Area_low_severity_percent", "Q_m_sq_per_sec", "Area_mod_to_high_severity_percent", "Area_square_kilometer")]
+
+#If want ALL environmental variables for sasha, use the code below
+#env_variables <- CombinedData[c("time_since_fire_day", "Area_low_severity_percent", "Q_m_sq_per_sec", "Area_square_kilometer", "Average_slope_percent", "Burn_Extent_percent", "Area_low_to_mod_severity_percent", "Area_mod_to_high_severity_percent")]
+
+#assign environmental variables to df
+envfit_result <- envfit(nmds_result, env_variables, permutations = 999)
+
+#have the environmental variables assigned to arrows for plotting
+en_coord_cont = as.data.frame(scores(envfit_result, "vectors")) * ordiArrowMul(envfit_result)
+
+# Shorten labels for plotting species and vectors
+nmds_species$ShortLabel <- c("Levo", "DOC", "DBC", "DBC:DOC", "Levo:DOC")  # Replace with your short labels
+
+# Change labels for plotting vectors. Also wrapping text for improving clarity of the plot
+en_coord_cont$WrappedLabel <- c(
+  "Time Since\nFire", #Time Since FIre
+  "Low Severity\nBurn Extent", #Low Seveirty Burn Extent
+  "Discharge", #Discharge
+  "Mod-High\nBurn Extent", #Moderate to High Burn Extent
+  "Watershed\nArea" #Watershed Area
+)
+  
+#NMDS Visual Plot
+ggplot(nmds_scores, aes(x = NMDS1, y = NMDS2)) +
+  
+  #Sites
+  geom_point(data = nmds_scores, aes(size = 100, color = time, fill = time, shape = watershed)) +
+     scale_shape_manual(values = c(21, 22, 24, 23, 25))+
+  scale_fill_gradient(low="#00FFFF", high="navy")+
+  scale_color_gradient(low="#00FFFF", high="navy")+
+ 
+  #Species
+  geom_point(data = nmds_species, aes(x = NMDS1, y = NMDS2), shape = 8, stroke = 2, size = 3, alpha = 1, colour = "hotpink") +
+  
+  #vectors
+  geom_segment(aes(x = 0, y = 0, xend = NMDS1*0.75, yend = NMDS2*0.75), data = en_coord_cont, linewidth =1, alpha = 1, colour = "black", arrow = arrow(length = unit(0.2, "cm"), type = "closed")) +
+
+#Add repelled labels for species and vectors
+  geom_text_repel(data = nmds_species, aes(x = NMDS1, y = NMDS2, label = ShortLabel), colour = "black", fontface = "bold", size = 3, box.padding = 0.2, max.overlaps = Inf) + #species
+  geom_text_repel(data = en_coord_cont, aes(x = NMDS1*0.75, y = NMDS2*0.75, label = WrappedLabel), size = 3, box.padding = 0.5, max.overlaps = 50) + #vectors
+  
+  
+  #chart title
+  labs(x = "NMDS1",
+       y = "NMDS2") +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),  # Remove gridlines
+    axis.line = element_line(size = 0.5),  # Add axis lines
+    axis.ticks = element_line(size = 0.5),  # Add axis ticks
+    axis.ticks.length = unit(3, "pt"),  # Make ticks outward
+    axis.line.x = element_line(size = 0.5),
+    axis.line.y = element_line(size = 0.5)
+  )
+
+#Determine which vectors are statistically significant
+envfit_result
+```
+
+
+
+
+
+
+
+
 
 #Random Forest Models
-```{r}
-install.packages("randomForest")
-install.packages("caret")  # Optional, for additional tools like cross-validation
-library(randomForest)
-library(caret)
-```
 
 #prepare data for RFM
 ```{r}
@@ -312,7 +353,7 @@ na.omit(CombinedData)
 CombinedData$watershed <- as.factor(CombinedData$watershed) 
 ```
 
-#RFM for Levo
+#RFM for Levoglucosan concentrations
 ```{r}
 #Split levoglucosan dataset into model and test datasets
 set.seed(123)  # For reproducibility
@@ -348,7 +389,6 @@ cat("RMSE:", rmse, "\n")
 cat("R²:", r_squared, "\n")
 
 #Analyze varibale importance
-#something
 importance(rf_levoglucosan)
 
 #visualize variable importance
@@ -375,6 +415,55 @@ rf_tuned <- train(
 levo_best_rf_model <- rf_tuned$finalModel
 varImpPlot(levo_best_rf_model)
 ```
+#Plotting the RFM Results for Levoglucosan Concentrations
+```{r}
+# Extract and format variable importance
+var_imp <- as.data.frame(importance(rf_levoglucosan))
+var_imp$Variable <- rownames(var_imp)  # Convert rownames to a column
+
+# Rename columns to something more user-friendly if necessary
+colnames(var_imp) <- c("MeanDecreaseAccuracy", "MeanDecreaseGini", "Variable")
+
+# Replace variable names with custom labels
+custom_labels <- c(
+    "Time Since Fire", "Flow Rate (m³/s)", "Area (km²)", "Slope (%)",
+    "Burn Extent (%)", "Low Severity Area (%)", 
+    "Low-Moderate Severity Area (%)", "Moderate-High Severity Area (%)"
+)
+var_imp$Variable <- factor(custom_labels, levels = custom_labels)
+
+#Plotting variable importance for visual clarity
+ggplot(var_imp, aes(x = reorder(Variable, MeanDecreaseAccuracy), y = MeanDecreaseAccuracy)) +
+    geom_bar(stat = "identity", fill = "pink") +
+    coord_flip() +
+    labs(
+        title = "Levoglucosan - Variable Importance Plot",
+        x = "Variables",
+        y = "Mean Decrease in Accuracy"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+        panel.grid = element_blank(),  # Remove gridlines
+        plot.title = element_text(hjust = 0.5),  # Center the title
+        axis.line = element_line(),  # Add axis lines
+        axis.ticks = element_line(),  # Add axis ticks
+        axis.ticks.length = unit(0.2, "cm")  # Customize tick length
+    )
+
+#Display key statistical values in a tabular format
+# Extract variable importance
+levo_importance_data <- importance(levo_best_rf_model)
+
+# Convert to a data frame for better readability
+levo_importance_table <- as.data.frame(levo_importance_data)
+levo_importance_table$Variable <- rownames(levo_importance_table)
+rownames(levo_importance_table) <- NULL
+
+# Print the table
+print(levo_importance_table)
+```
+
+
 #RFM for for dissolved black carbon :) 
 ```{r}
 #Split DBC dataset into model and test datasets
@@ -440,8 +529,55 @@ varImpPlot(DBC_best_rf_model)
 
 ```
 
-#RFM for Levo:DOC :) 
+#Plotting the RFM Results for DBC Concentrations
 ```{r}
+# Extract and format variable importance
+var_imp <- as.data.frame(importance(DBC_best_rf_model))
+var_imp$Variable <- rownames(var_imp)  # Convert rownames to a column
+
+# Rename columns to something more user-friendly if necessary
+colnames(var_imp) <- c("MeanDecreaseAccuracy", "MeanDecreaseGini", "Variable")
+
+# Replace variable names with custom labels
+custom_labels <- c(
+    "Time Since Fire", "Discharge (m³/s)", "Area (km²)", "Slope (%)",
+    "Burn Extent (%)", "Low Severity Area (%)", 
+    "Low-Moderate Severity Area (%)", "Moderate-High Severity Area (%)"
+)
+var_imp$Variable <- factor(custom_labels, levels = custom_labels)
+
+#Plotting variable importance for visual clarity
+ggplot(var_imp, aes(x = reorder(Variable, MeanDecreaseAccuracy), y = MeanDecreaseAccuracy)) +
+    geom_bar(stat = "identity", fill = "pink") +
+    coord_flip() +
+    labs(
+        title = "DBC - Variable Importance Plot",
+        x = "Variables",
+        y = "Mean Decrease in Accuracy"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+        panel.grid = element_blank(),  # Remove gridlines
+        plot.title = element_text(hjust = 0.5),  # Center the title
+        axis.line = element_line(),  # Add axis lines
+        axis.ticks = element_line(),  # Add axis ticks
+        axis.ticks.length = unit(0.2, "cm")  # Customize tick length
+    )
+
+#Display key statistical values in a tabular format
+# Extract variable importance
+DBC_importance_data <- importance(DBC_best_rf_model)
+
+# Convert to a data frame for better readability
+DBC_importance_table <- as.data.frame(DBC_importance_data)
+DBC_importance_table$Variable <- rownames(DBC_importance_table)
+rownames(importance_table) <- NULL
+
+# Print the table
+print(importance_table)
+```
+#RFM for Levo:DOC :) 
+#```{r}
 #Split DBC dataset into model and test datasets
 set.seed(123)  # For reproducibility
 LevoDOC_train_idx <- createDataPartition(CombinedData$Levo_DOC_perc, p = 0.7, list = FALSE)
@@ -504,8 +640,56 @@ LevoDOC_best_rf_model <- DBC_rf_tuned$finalModel
 varImpPlot(LevoDOC_best_rf_model)
 
 ```
+
+#Plotting the RFM Results for Levo:DOC Concentrations
+#```{r}
+# Extract and format variable importance
+var_imp <- as.data.frame(importance(LevoDOC_best_rf_model))
+var_imp$Variable <- rownames(var_imp)  # Convert rownames to a column
+
+# Rename columns to something more user-friendly if necessary
+colnames(var_imp) <- c("MeanDecreaseAccuracy", "MeanDecreaseGini", "Variable")
+
+# Replace variable names with custom labels
+custom_labels <- c(
+    "Time Since Fire", "Discharge (m³/s)", "Area (km²)", "Slope (%)",
+    "Burn Extent (%)", "Low Severity Area (%)", 
+    "Low-Moderate Severity Area (%)", "Moderate-High Severity Area (%)"
+)
+var_imp$Variable <- factor(custom_labels, levels = custom_labels)
+
+#Plotting variable importance for visual clarity
+ggplot(var_imp, aes(x = reorder(Variable, MeanDecreaseAccuracy), y = MeanDecreaseAccuracy)) +
+    geom_bar(stat = "identity", fill = "pink") +
+    coord_flip() +
+    labs(
+        title = "Levo:DOC - Variable Importance Plot",
+        x = "Variables",
+        y = "Mean Decrease in Accuracy"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+        panel.grid = element_blank(),  # Remove gridlines
+        plot.title = element_text(hjust = 0.5),  # Center the title
+        axis.line = element_line(),  # Add axis lines
+        axis.ticks = element_line(),  # Add axis ticks
+        axis.ticks.length = unit(0.2, "cm")  # Customize tick length
+    )
+
+#Display key statistical values in a tabular format
+# Extract variable importance
+LevoDOC_importance_data <- importance(LevoDOC_best_rf_model)
+
+# Convert to a data frame for better readability
+LevoDOC_importance_table <- as.data.frame(LevoDOC_importance_data)
+LevoDOC_importance_table$Variable <- rownames(LevoDOC_importance_table)
+rownames(LevoDOC_importance_table) <- NULL
+
+# Print the table
+print(LevoDOC_importance_table)
+```
 #RFM for DBC:DOC :) 
-```{r}
+#```{r}
 #Split DBC dataset into model and test datasets
 set.seed(123)  # For reproducibility
 DBCDOC_train_idx <- createDataPartition(CombinedData$DBC_DOC_perc, p = 0.7, list = FALSE)
@@ -524,7 +708,7 @@ rf_DBCDOC <- randomForest(
 
 # Print a summary of the model
 print(rf_DBCDOC)
-varImpPlot(rf_LevoDOC)
+varImpPlot(rf_DBCDOC)
 
 #Evaluate RFM Performance
 #predict of the test set
@@ -568,4 +752,50 @@ DBCDOC_best_rf_model <- DBC_rf_tuned$finalModel
 varImpPlot(DBCDOC_best_rf_model)
 
 ```
+#Plotting the RFM Results for DBC:DOC Concentrations
+#```{r}
+# Extract and format variable importance
+var_imp <- as.data.frame(importance(DBCDOC_best_rf_model))
+var_imp$Variable <- rownames(var_imp)  # Convert rownames to a column
 
+# Rename columns to something more user-friendly if necessary
+colnames(var_imp) <- c("MeanDecreaseAccuracy", "MeanDecreaseGini", "Variable")
+
+# Replace variable names with custom labels
+custom_labels <- c(
+    "Time Since Fire", "Discharge (m³/s)", "Area (km²)", "Slope (%)",
+    "Burn Extent (%)", "Low Severity Area (%)", 
+    "Low-Moderate Severity Area (%)", "Moderate-High Severity Area (%)"
+)
+var_imp$Variable <- factor(custom_labels, levels = custom_labels)
+
+#Plotting variable importance for visual clarity
+ggplot(var_imp, aes(x = reorder(Variable, MeanDecreaseAccuracy), y = MeanDecreaseAccuracy)) +
+    geom_bar(stat = "identity", fill = "pink") +
+    coord_flip() +
+    labs(
+        title = "Levo:DOC - Variable Importance Plot",
+        x = "Variables",
+        y = "Mean Decrease in Accuracy"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+        panel.grid = element_blank(),  # Remove gridlines
+        plot.title = element_text(hjust = 0.5),  # Center the title
+        axis.line = element_line(),  # Add axis lines
+        axis.ticks = element_line(),  # Add axis ticks
+        axis.ticks.length = unit(0.2, "cm")  # Customize tick length
+    )
+
+#Display key statistical values in a tabular format
+# Extract variable importance
+DBCDOC_importance_data <- importance(DBCDOC_best_rf_model)
+
+# Convert to a data frame for better readability
+DBCDOC_importance_table <- as.data.frame(DBCDOC_importance_data)
+DBCDOC_importance_table$Variable <- rownames(DBCDOC_importance_table)
+rownames(DBCDOC_importance_table) <- NULL
+
+# Print the table
+print(DBCDOC_importance_table)
+```

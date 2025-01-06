@@ -57,6 +57,9 @@ print(CoastalFires_CombinedData)
 
 #Calculate fluxes and yields
 ```{r}
+#discharge normalized levoglucosan concentrations
+CoastalFires_CombinedData$Q_norm_levo <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$levo_micro_gram_per_liter / CoastalFires_CombinedData$Q_m_sq_per_sec)
+
 #flux
 CoastalFires_CombinedData$flux_levo <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$levo_micro_gram_per_liter * CoastalFires_CombinedData$Q_m_sq_per_sec)
 CoastalFires_CombinedData$flux_DOC <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$DOC_mgC_per_L * CoastalFires_CombinedData$Q_m_sq_per_sec)
@@ -87,7 +90,7 @@ desired_order <- c("sample_id", "watershed", "date", "time","time_since_fire_day
                    "Q_m_sq_per_sec", "flow_cat", "lagoon", "DOC_mgC_per_L", 
                    "levo_micro_gram_per_liter", "std_levo_micro_gram_per_liter", 
                    "DBC_mgC_per_L", "DBC_DOC_perc", "dB6CA_nM", "dB5CA_nM", 
-                   "dB6CA_B5CA", "Levo_DOC_perc", "Levo_DBC", "flux_levo", 
+                   "dB6CA_B5CA", "Levo_DOC_perc", "Levo_DBC", "Q_norm_levo", "flux_levo", 
                    "flux_DOC", "flux_DBC", "yield_levo", "yield_DOC", 
                    "yield_DBC", "a254_per_m", "SUVA254_L_per_mgC_per_m", 
                    "Area_square_kilometer", "Average_slope_percent", 
