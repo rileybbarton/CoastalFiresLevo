@@ -11,6 +11,8 @@ library(grid)
 library(extrafont)
 library(tidyr)
 library(dplyr)
+library(lubridate)
+library(scales)
 ```
 
 #set working directory
@@ -20,243 +22,103 @@ setwd("C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires")
 
 #load dataset
 ```{r}
-FigureData <- readr::read_csv("CoastalFires_FigureData.csv")
+CombinedData <- readr::read_csv("CoastalFires_CombinedData.csv")
+DischargeData <- readr::read_csv("CoastalFires_DischargeData.csv")
 ```
+Print Column names
 ```{r}
-#levo v burn extent
-ggplot(FigureData, aes(x = Burn_Extent_percent, y = avg_levo_ppb, fill = watershed)) +
-  geom_boxplot(color = "black", size = 1.2, outlier.shape = NA) +  # Box plots
-  geom_jitter(width = 0.0001, color = "black", alpha = 1) +  # Add jittered points
-  scale_fill_manual(values = c("#E94411", "#FF7111", "#FFC44F", "#FFFFCC", "#9E0000")) +  # Customize colors
-  theme_minimal() +
-  theme(
-    panel.grid.major = element_blank(),       # Remove major gridlines
-    panel.grid.minor = element_blank(),       # Remove minor gridlines
-    axis.ticks.length = unit(0.25, "cm"),     # Length of ticks
-    axis.ticks = element_line(size = 1),      # Thickness of tick marks
-    axis.ticks.y = element_line(size = 1),    # Y-axis tick thickness
-    axis.ticks.x = element_line(size = 1),    # X-axis tick thickness
-    axis.line = element_line(size = 1),        # Add axis lines
-    legend.position = "none",                   # Remove the legend
-    text = element_text(color = "black"),  # Set font to Calibri
-    axis.text.x = element_text(color = "black", size = 14),  # X-axis text size
-    axis.text.y = element_text(color = "black", size = 14),  # Y-axis text size
-    axis.title.x = element_text(size = 16),    # X-axis title size
-    axis.title.y = element_text(size = 16)      # Y-axis title size
-  ) +
-  labs(x = "Burn Extent",
-       y = "Levoglucosan (ppp)")
-ggsave("A.png") 
+col_names <- colnames(DischargeData)
 
-#flux_levo v burn extent
-ggplot(FigureData, aes(x = Burn_Extent_percent, y = flux_levo, fill = watershed)) +
-  geom_boxplot(color = "black", size = 1.2, outlier.shape = NA) +  # Box plots
-  geom_jitter(width = 0.0001, color = "black", alpha = 1) +  # Add jittered points
-  scale_fill_manual(values = c("#E94411", "#FF7111", "#FFC44F", "#FFFFCC", "#9E0000")) +  # Customize colors
-  theme_minimal() +
-  theme(
-    panel.grid.major = element_blank(),       # Remove major gridlines
-    panel.grid.minor = element_blank(),       # Remove minor gridlines
-    axis.ticks.length = unit(0.25, "cm"),     # Length of ticks
-    axis.ticks = element_line(size = 1),      # Thickness of tick marks
-    axis.ticks.y = element_line(size = 1),    # Y-axis tick thickness
-    axis.ticks.x = element_line(size = 1),    # X-axis tick thickness
-    axis.line = element_line(size = 1),        # Add axis lines
-    legend.position = "none",                   # Remove the legend
-    text = element_text(color = "black"),  # Set font to Calibri
-    axis.text.x = element_text(color = "black", size = 14),  # X-axis text size
-    axis.text.y = element_text(color = "black", size = 14),  # Y-axis text size
-    axis.title.x = element_text(size = 16),    # X-axis title size
-    axis.title.y = element_text(size = 16)      # Y-axis title size
-  ) +
-  labs(x = "Burn Extent",
-       y = "Levoglucosan Flux")
-ggsave("B.png") 
-  
-#yield_levo v burn extent
-ggplot(FigureData, aes(x = Burn_Extent_percent, y = yield_levo, fill = watershed)) +
-  geom_boxplot(color = "black", size = 1.2, outlier.shape = NA) +  # Box plots
-  geom_jitter(width = 0.0001, color = "black", alpha = 1) +  # Add jittered points
-  scale_fill_manual(values = c("#E94411", "#FF7111", "#FFC44F", "#FFFFCC", "#9E0000")) +  # Customize colors
-  theme_minimal() +
-  theme(
-    panel.grid.major = element_blank(),       # Remove major gridlines
-    panel.grid.minor = element_blank(),       # Remove minor gridlines
-    axis.ticks.length = unit(0.25, "cm"),     # Length of ticks
-    axis.ticks = element_line(size = 1),      # Thickness of tick marks
-    axis.ticks.y = element_line(size = 1),    # Y-axis tick thickness
-    axis.ticks.x = element_line(size = 1),    # X-axis tick thickness
-    axis.line = element_line(size = 1),        # Add axis lines
-    legend.position = "none",                   # Remove the legend
-    text = element_text(color = "black"),  # Set font to Calibri
-    axis.text.x = element_text(color = "black", size = 14),  # X-axis text size
-    axis.text.y = element_text(color = "black", size = 14),  # Y-axis text size
-    axis.title.x = element_text(size = 16),    # X-axis title size
-    axis.title.y = element_text(size = 16)      # Y-axis title size
-  ) +
-  labs(x = "Burn Extent",
-       y = "Levoglucosan Yield")
-ggsave("C.png") 
-  
-#Levo:DOC v burn extent
-ggplot(FigureData, aes(x = Burn_Extent_percent, y = Levo_DOC_perc, fill = watershed)) +
-  geom_boxplot(color = "black", size = 1.2, outlier.shape = NA) +  # Box plots
-  geom_jitter(width = 0.0001, color = "black", alpha = 1) +  # Add jittered points
-  scale_fill_manual(values = c("#E94411", "#FF7111", "#FFC44F", "#FFFFCC", "#9E0000")) +  # Customize colors
-  theme_minimal() +
-  theme(
-    panel.grid.major = element_blank(),       # Remove major gridlines
-    panel.grid.minor = element_blank(),       # Remove minor gridlines
-    axis.ticks.length = unit(0.25, "cm"),     # Length of ticks
-    axis.ticks = element_line(size = 1),      # Thickness of tick marks
-    axis.ticks.y = element_line(size = 1),    # Y-axis tick thickness
-    axis.ticks.x = element_line(size = 1),    # X-axis tick thickness
-    axis.line = element_line(size = 1),        # Add axis lines
-    legend.position = "none",                   # Remove the legend
-    text = element_text(color = "black"),  # Set font to Calibri
-    axis.text.x = element_text(color = "black", size = 14),  # X-axis text size
-    axis.text.y = element_text(color = "black", size = 14),  # Y-axis text size
-    axis.title.x = element_text(size = 16),    # X-axis title size
-    axis.title.y = element_text(size = 16)      # Y-axis title size
-  ) +
-  labs(title = "Levoglucosan Concentration by Burn Extent",
-       x = "Burn Extent",
-       y = "Levo:DOC (%)")
-ggsave("D.png") 
-  
+# Print column names
+print(col_names)
 ```
-##levo v low severity burn extent
+Make a new column in Combined data for Date_Time
 ```{r}
-#levo v burn extent
-ggplot(FigureData, aes(x = Area_low_severity_percent, y = avg_levo_ppb, fill = watershed)) +
-  geom_boxplot(color = "black", size = 1.2, outlier.shape = NA) +  # Box plots
-  scale_fill_manual(values = c("#E94411", "#FF7111", "#FFC44F", "#FFFFCC", "#9E0000")) +  # Customize colors
-  theme_minimal() +
-  theme(
-    panel.grid.major = element_blank(),       # Remove major gridlines
-    panel.grid.minor = element_blank(),       # Remove minor gridlines
-    axis.ticks.length = unit(0.25, "cm"),     # Length of ticks
-    axis.ticks = element_line(size = 1),      # Thickness of tick marks
-    axis.ticks.y = element_line(size = 1),    # Y-axis tick thickness
-    axis.ticks.x = element_line(size = 1),    # X-axis tick thickness
-    axis.line = element_line(size = 1),        # Add axis lines
-    legend.position = "none",                   # Remove the legend
-    text = element_text(color = "black"),  # Set font to Calibri
-    axis.text.x = element_text(color = "black", size = 14),  # X-axis text size
-    axis.text.y = element_text(color = "black", size = 14),  # Y-axis text size
-    axis.title.x = element_text(size = 16),    # X-axis title size
-    axis.title.y = element_text(size = 16)      # Y-axis title size
-  ) +
-  labs(x = "Low Severity Burn Extent",
-       y = "Levoglucosan (ppb)")
-ggsave("E.png") 
+# Combine date and time into a new column with the desired format
+CombinedData$datetime <- format(
+  as.POSIXct(
+    paste(CombinedData$date, CombinedData$time),        # Combine date and time
+    format = "%m/%d/%Y %H:%M"           # Input format
+  ),
+  format = "%m/%d/%Y %H:%M:%S"          # Output format
+)
+```
 
-#flux_levo v burn extent
-ggplot(FigureData, aes(x = Area_low_severity_percent, y = flux_levo, fill = watershed)) +
-  geom_boxplot(color = "black", size = 1.2, outlier.shape = NA) +  # Box plots
-  scale_fill_manual(values = c("#E94411", "#FF7111", "#FFC44F", "#FFFFCC", "#9E0000")) +  # Customize colors
-  theme_minimal() +
-  theme(
-    panel.grid.major = element_blank(),       # Remove major gridlines
-    panel.grid.minor = element_blank(),       # Remove minor gridlines
-    axis.ticks.length = unit(0.25, "cm"),     # Length of ticks
-    axis.ticks = element_line(size = 1),      # Thickness of tick marks
-    axis.ticks.y = element_line(size = 1),    # Y-axis tick thickness
-    axis.ticks.x = element_line(size = 1),    # X-axis tick thickness
-    axis.line = element_line(size = 1),        # Add axis lines
-    legend.position = "none",                   # Remove the legend
-    text = element_text(color = "black"),  # Set font to Calibri
-    axis.text.x = element_text(color = "black", size = 14),  # X-axis text size
-    axis.text.y = element_text(color = "black", size = 14),  # Y-axis text size
-    axis.title.x = element_text(size = 16),    # X-axis title size
-    axis.title.y = element_text(size = 16)      # Y-axis title size
-  ) +
-  labs(x = "Low Severity Burn Extent",
-       y = "Levoglucosan Flux")
-ggsave("F.png") 
+Standardize DateTime formats for each watershed
+```{r}
+DischargeData$SAN_DateTime <- mdy_hm(DischargeData$SAN_DateTime)
+DischargeData$PESC_DateTime <- mdy_hm(DischargeData$PESC_DateTime)
+DischargeData$LAG_DateTime <- mdy_hm(DischargeData$LAG_DateTime)
+DischargeData$MAJ_DateTime <- mdy_hm(DischargeData$MAJ_DateTime)
+DischargeData$SCT_DateTime <- mdy(DischargeData$SCT_DateTime)  # Only date, no time
+#some of the Scott Creek DateTime values will fail to parse. This is because the second water year was recorded using different DateTime formats. However, as this manuscript is only examining the first water year (Oct 2020-May 2021), this loss of discharge values do not impact analyses. Figures will be made only utilizing points prior to May 4th, 2021. 
+```
+Ensure all DateTime columns are in "POSIXct" rather than character classes
+```{r}
+CombinedData$datetime <- as.POSIXct(CombinedData$datetime, format = "%m/%d/%Y %H:%M")
+DischargeData$LAG_DateTime <- as.POSIXct(DischargeData$LAG_DateTime, format = "%m/%d/%Y %H:%M")
+DischargeData$MAJ_DateTime <- as.POSIXct(DischargeData$MAJ_DateTime, format = "%m/%d/%Y %H:%M")
+DischargeData$PESC_DateTime <- as.POSIXct(DischargeData$PESC_DateTime, format = "%m/%d/%Y %H:%M")
+DischargeData$SAN_DateTime <- as.POSIXct(DischargeData$SAN_DateTime, format = "%m/%d/%Y %H:%M")
+DischargeData$SCT_DateTime <- as.POSIXct(DischargeData$SCT_DateTime, format = "%m/%d/%Y %H:%M")
 
-#yield_levo v burn extent
-ggplot(FigureData, aes(x = Area_low_severity_percent, y = yield_levo, fill = watershed)) +
-  geom_boxplot(color = "black", size = 1.2, outlier.shape = NA) +  # Box plots
-  scale_fill_manual(values = c("#E94411", "#FF7111", "#FFC44F", "#FFFFCC", "#9E0000")) +  # Customize colors
-  theme_minimal() +
-  theme(
-    panel.grid.major = element_blank(),       # Remove major gridlines
-    panel.grid.minor = element_blank(),       # Remove minor gridlines
-    axis.ticks.length = unit(0.25, "cm"),     # Length of ticks
-    axis.ticks = element_line(size = 1),      # Thickness of tick marks
-    axis.ticks.y = element_line(size = 1),    # Y-axis tick thickness
-    axis.ticks.x = element_line(size = 1),    # X-axis tick thickness
-    axis.line = element_line(size = 1),        # Add axis lines
-    legend.position = "none",                   # Remove the legend
-    text = element_text(color = "black"),  # Set font to Calibri
-    axis.text.x = element_text(color = "black", size = 14),  # X-axis text size
-    axis.text.y = element_text(color = "black", size = 14),  # Y-axis text size
-    axis.title.x = element_text(size = 16),    # X-axis title size
-    axis.title.y = element_text(size = 16)      # Y-axis title size
-  ) +
-  labs(x = "Low Severity Burn Extent",
-       y = "Levoglucosan Yield")
-ggsave("G.png") 
+class(CombinedData$datetime)
+class(DischargeData$LAG_DateTime)
+class(DischargeData$MAJ_DateTime)
+class(DischargeData$PESC_DateTime)
+class(DischargeData$SAN_DateTime)
+class(DischargeData$SCT_DateTime)
+```
 
-#Levo:DOC v burn extent
-ggplot(FigureData, aes(x = Area_low_severity_percent, y = Levo_DOC_perc, fill = watershed)) +
-  geom_boxplot(color = "black", size = 1.2, outlier.shape = NA) +  # Box plots
-  scale_fill_manual(values = c("#E94411", "#FF7111", "#FFC44F", "#FFFFCC", "#9E0000")) +  # Customize colors
+Figure 2: The discharge (blue lines) and concentration of levoglucosan (yellow to dark red markers) from (A) the San Lorenzo River (B) Pescadero Creek (C) Majors Creek, (D) Laguna Creek, and (E) Scott Creek. The CZU Lightning Complex Fires (indicated by fire symbol) burned from August 16th until September 21st.
+```{r}
+# Create Fig. 2A - Pescadero Creek
+library(scales)
+
+# Rescale the levoglucosan data and discharge data to the same range
+rescaled_discharge <- rescale(DischargeData$PESC_Flow_cms, to = c(min(CombinedData$levo_micro_gram_per_liter, na.rm = TRUE), 
+                                                                  max(CombinedData$levo_micro_gram_per_liter, na.rm = TRUE)))
+
+# Plot
+ggplot() +
+  # Levoglucosan data (primary y-axis)
+  geom_point(data = CombinedData %>% filter(watershed == "Pescadero Creek"), 
+             aes(x = datetime, y = levo_micro_gram_per_liter), 
+             color = "blue", alpha = 0.7, size = 2) +
+  geom_line(data = CombinedData %>% filter(watershed == "Pescadero Creek"), 
+            aes(x = datetime, y = levo_micro_gram_per_liter), 
+            color = "blue", linewidth = 1) +
+  # Discharge data (secondary y-axis with rescaled values and log transformation)
+  geom_line(data = DischargeData, 
+            aes(x = PESC_DateTime, y = log10(rescaled_discharge + 1)),  # Apply log10 with +1 to avoid log(0)
+            color = "red", linewidth = 1) +
+  # Secondary axis for discharge (log scale)
+  scale_y_continuous(
+    name = "Levoglucosan (ppb)", 
+    sec.axis = sec_axis(
+      trans = ~10^(.) - 1,  # Reverse log scaling on the secondary axis
+      name = "Discharge (m³/s, log scale)"
+    )
+  ) +
+  # Common x-axis
+  scale_x_datetime(name = "Date") +
+  # Customize appearance
   theme_minimal() +
   theme(
-    panel.grid.major = element_blank(),       # Remove major gridlines
-    panel.grid.minor = element_blank(),       # Remove minor gridlines
-    axis.ticks.length = unit(0.25, "cm"),     # Length of ticks
-    axis.ticks = element_line(size = 1),      # Thickness of tick marks
-    axis.ticks.y = element_line(size = 1),    # Y-axis tick thickness
-    axis.ticks.x = element_line(size = 1),    # X-axis tick thickness
-    axis.line = element_line(size = 1),        # Add axis lines
-    legend.position = "none",                   # Remove the legend
-    text = element_text(color = "black"),  # Set font to Calibri
-    axis.text.x = element_text(color = "black", size = 14),  # X-axis text size
-    axis.text.y = element_text(color = "black", size = 14),  # Y-axis text size
-    axis.title.x = element_text(size = 16),    # X-axis title size
-    axis.title.y = element_text(size = 16)      # Y-axis title size
+    axis.title.y = element_text(color = "blue"),
+    axis.title.y.right = element_text(color = "red"),
+    panel.grid.minor = element_blank()
   ) +
-  labs(title = "Levoglucosan Concentration by Burn Extent",
-       x = "Low Severity Burn Extent",
-       y = "Levo:DOC (%)")
-ggsave("H.png") 
+  labs(title = "Discharge (Log Scale) and Levoglucosan Concentration Over Time")
+
+  
 ```
 
 ```{r}
-# Reshape the data to long format, including both x variables
-FigureData_long <- FigureData %>%
-  pivot_longer(cols = c(avg_levo_ppb, flux_levo, yield_levo, Levo_DOC_perc), 
-               names_to = "Measurement", 
-               values_to = "Value") %>%
-  pivot_longer(cols = c(Burn_Extent_percent, Area_low_severity_percent, Area_low_to_mod_severity_percent, Area_mod_to_high_severity_percent), 
-               names_to = "X_Variable", 
-               values_to = "X_Value")
-
-# Create a multi-panel box plot
-ggplot(FigureData_long, aes(x = X_Value, y = Value, fill = watershed)) +
-  geom_boxplot(color = "black", size = 1.2, outlier.shape = NA) +  # Box plots
-  geom_jitter(width = 0.2, color = "black", alpha = 1) +  # Add jittered points
-  scale_fill_manual(values = c("#E94411", "#FF7111", "#FFC44F", "#FFFFCC", "#9E0000")) +  # Customize colors
+ggplot(DischargeData, aes(x = PESC_DateTime, y = PESC_Flow_cms)) +
+  geom_line(color = "red") +
+  scale_x_datetime(name = "Date") +
+  scale_y_continuous(name = "Discharge (m³/s)") +
   theme_minimal() +
-  theme(
-    panel.grid.major = element_blank(),       # Remove major gridlines
-    panel.grid.minor = element_blank(),       # Remove minor gridlines
-    axis.ticks.length = unit(0.25, "cm"),     # Length of ticks
-    axis.ticks = element_line(size = 1),      # Thickness of tick marks
-    axis.line = element_line(size = 1),        # Add axis lines
-    legend.position = "none",                   # Remove the legend
-    text = element_text(color = "black"),      # Set font color
-    axis.text.x = element_text(color = "black", size = 14),  # X-axis text size
-    axis.text.y = element_text(color = "black", size = 14),  # Y-axis text size
-    axis.title.x = element_text(size = 16),    # X-axis title size
-    axis.title.y = element_text(size = 16)      # Y-axis title size
-  ) +
-  labs(title = "Levoglucosan and Levo:DOC Concentration by Burn Extent and Low Severity",
-       x = "Extent (%)",
-       y = "Concentration") +
-  facet_grid(X_Variable ~ Measurement, scales = "free_y", switch = "y")  # Stac # Create panels 
+  labs(title = "Discharge Over Time")
 ```
-

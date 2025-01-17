@@ -265,7 +265,77 @@ print(nmds_result)
 ```
 
 
-#Plot NMDS Results
+#Plot NMDS Results - Full NMDS
+```{r}
+# Extract NMDS scores for plotting
+nmds_scores <- as.data.frame(scores(nmds_result, display = "sites"))
+nmds_species<-as.data.frame(scores(nmds_result, display="species"))
+nmds_scores$Site <- CombinedData$watershed  # Add Site info for coloring
+nmds_scores$time <- CombinedData$time_since_fire_day #this is for coloring the data points by time
+nmds_scores$watershed <- CombinedData$watershed #this is for the point shape by watershed
+
+# Environmental variables 
+env_variables <- CombinedData[c("time_since_fire_day", "Area_low_severity_percent", "Q_m_sq_per_sec", "Area_square_kilometer", "Average_slope_percent", "Burn_Extent_percent", "Area_low_to_mod_severity_percent", "Area_mod_to_high_severity_percent")]
+
+#assign environmental variables to df
+envfit_result <- envfit(nmds_result, env_variables, permutations = 999)
+
+#have the environmental variables assigned to arrows for plotting
+en_coord_cont = as.data.frame(scores(envfit_result, "vectors")) * ordiArrowMul(envfit_result)
+
+# Shorten labels for plotting species and vectors
+nmds_species$ShortLabel <- c("Levo", "DOC", "DBC", "DBC:DOC", "Levo:DOC")  # Replace with your short labels
+
+# Change labels for plotting vectors. Also wrapping text for improving clarity of the plot
+en_coord_cont$WrappedLabel <- c(
+  "Time Since\nFire", #Time Since Fire
+  "Low Severity\nBurn Extent", #Low Seveirty Burn Extent
+  "Discharge", #Discharge
+  "Watershed\nArea",
+  "Slope",
+  "Burn Extent",
+  "Low-Mod\nBurn Extent",
+  "Mod-High\nBurn Extent" #Moderate to High Burn Extent
+)
+  
+#NMDS Visual Plot
+ggplot(nmds_scores, aes(x = NMDS1, y = NMDS2)) +
+  
+  #Sites
+  geom_point(data = nmds_scores, aes(size = 100, color = time, fill = time, shape = watershed)) +
+     scale_shape_manual(values = c(21, 22, 24, 23, 25))+
+  scale_fill_gradient(low="#00FFFF", high="navy")+
+  scale_color_gradient(low="#00FFFF", high="navy")+
+ 
+  #Species
+  geom_point(data = nmds_species, aes(x = NMDS1, y = NMDS2), shape = 8, stroke = 2, size = 3, alpha = 1, colour = "hotpink") +
+  
+  #vectors
+  geom_segment(aes(x = 0, y = 0, xend = NMDS1*0.75, yend = NMDS2*0.75), data = en_coord_cont, linewidth =1, alpha = 1, colour = "black", arrow = arrow(length = unit(0.2, "cm"), type = "closed")) +
+
+#Add repelled labels for species and vectors
+  geom_text_repel(data = nmds_species, aes(x = NMDS1, y = NMDS2, label = ShortLabel), colour = "black", fontface = "bold", size = 3, box.padding = 0.2, max.overlaps = Inf) + #species
+  geom_text_repel(data = en_coord_cont, aes(x = NMDS1*0.75, y = NMDS2*0.75, label = WrappedLabel), size = 3, box.padding = 0.5, max.overlaps = 50) + #vectors
+  
+  
+  #chart title
+  labs(x = "NMDS1",
+       y = "NMDS2") +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),  # Remove gridlines
+    axis.line = element_line(size = 0.5),  # Add axis lines
+    axis.ticks = element_line(size = 0.5),  # Add axis ticks
+    axis.ticks.length = unit(3, "pt"),  # Make ticks outward
+    axis.line.x = element_line(size = 0.5),
+    axis.line.y = element_line(size = 0.5)
+  )
+
+#Determine which vectors are statistically significant
+envfit_result
+```
+
+#Plot NMDS Results - Simplified NMDS Figure
 ```{r}
 # Extract NMDS scores for plotting
 nmds_scores <- as.data.frame(scores(nmds_result, display = "sites"))
