@@ -14,6 +14,17 @@ library(dplyr)
 library(lubridate)
 library(scales)
 ```
+```{r}
+library(dplyr)
+
+# Calculate average value for each date
+average_values <- CombinedData %>%
+  group_by(time_since_fire_day) %>%
+  summarize(average_values = mean(DBC_DOC_perc, na.rm = TRUE))
+
+print(average_values)
+
+```
 
 #set working directory
 ```{r}
@@ -72,12 +83,59 @@ class(DischargeData$SCT_DateTime)
 
 Figure 2: The discharge (blue lines) and concentration of levoglucosan (yellow to dark red markers) from (A) the San Lorenzo River (B) Pescadero Creek (C) Majors Creek, (D) Laguna Creek, and (E) Scott Creek. The CZU Lightning Complex Fires (indicated by fire symbol) burned from August 16th until September 21st.
 ```{r}
+# Log-transform the discharge data
+DischargeData <- DischargeData$PESC_Flow_cms_log10 = log10(DischargeData$PESC_Flow_cms)
+
+# Calculate the scaling factor
+primary_max <- 70  # Maximum of the primary axis
+secondary_max <- max(DischargeData$PESC_Flow_cms_log10, na.rm = TRUE)  # Log-transformed max of secondary axis
+scaling_factor <- primary_max / secondary_max
+
+# Plot
+ggplot() +
+  # Levoglucosan data (primary y-axis)
+  geom_point(data = CombinedData %>% filter(watershed == "Pescadero Creek"), 
+             aes(x = datetime, y = levo_micro_gram_per_liter), 
+             color = "blue", alpha = 0.7, size = 2) +
+  geom_line(data = CombinedData %>% filter(watershed == "Pescadero Creek"), 
+            aes(x = datetime, y = levo_micro_gram_per_liter), 
+            color = "blue", linewidth = 1) +
+  # Discharge data (secondary y-axis with log-transformed and scaled values)
+  geom_line(data = DischargeData, 
+            aes(x = PESC_DateTime, y = PESC_Flow_cms_log10 * scaling_factor), 
+            color = "red", linewidth = 1) +
+  # Primary axis
+  scale_y_continuous(
+    name = "Levoglucosan (ppb)", 
+    limits = c(0, 70), 
+    breaks = seq(0, 70, by = 10), 
+    sec.axis = sec_axis(
+      ~ . / scaling_factor,  # Reverse the scaling for the secondary axis
+      name = "Discharge (m³/s, log scale)"  # Let ggplot handle breaks and labels dynamically
+    )
+  ) +
+  # Common x-axis
+  scale_x_datetime(name = "Date") +
+  theme_minimal() +
+  theme(
+    axis.title.y = element_text(color = "blue"),
+    axis.title.y.right = element_text(color = "red"),
+    panel.grid.minor = element_blank(),
+    axis.text.y.right = element_text(color = "red")
+  ) +
+  labs(title = "Discharge (Log Scale) and Levoglucosan Concentration Over Time")
+
+
+```
+
+```{r}
 # Create Fig. 2A - Pescadero Creek
-library(scales)
 
 # Rescale the levoglucosan data and discharge data to the same range
-rescaled_discharge <- rescale(DischargeData$PESC_Flow_cms, to = c(min(CombinedData$levo_micro_gram_per_liter, na.rm = TRUE), 
-                                                                  max(CombinedData$levo_micro_gram_per_liter, na.rm = TRUE)))
+# Calculate the scaling factor
+primary_max <- 70  # Maximum of primary axis
+PESC_secondary_max <- max(DischargeData$PESC_Flow_cms, na.rm = TRUE)  # Max of secondary axis data
+PESC_scaling_factor <- primary_max / PESC_secondary_max
 
 # Plot
 ggplot() +

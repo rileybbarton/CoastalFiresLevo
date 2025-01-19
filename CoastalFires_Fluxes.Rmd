@@ -1,0 +1,93 @@
+---
+title: "CoastalFires_Flux_Remineralization"
+author: "rbb"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+#Load necessary Libraries
+```{r}
+library(dplyr)
+library(tidyverse)
+```
+
+#set working directory
+```{r}
+setwd("C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires")
+```
+
+#load dataset
+```{r}
+CombinedData <- readr::read_csv("CoastalFires_CombinedData.csv")
+```
+#Calculate flux of levoglucosan for each sample
+```{r}
+CombinedData$Q_L_per_s <- CombinedData$Q_m_sq_per_sec * 1000 #convert discharge values from cubic meters per second to liters per second to make it compatible with levoglucosan concentrations that are in micro grams per liter
+
+CombinedData$Levo_Flux_ug_per_s <- CombinedData$levo_micro_gram_per_liter * CombinedData$Q_L_per_s #calculate levoglucosan flux for each sample. Units should be in micro grams per second
+
+CombinedData$Levo_Flux_kg_per_yr <- CombinedData$Levo_Flux_ug_per_s *86400 * 365 / 1000 / 1000 / 1000 #convert levoglucosan flux units to kilograms per year
+```
+
+#Average annual levoglucosan flux for each watershed
+```{r}
+Levo_Flux_Average <- CombinedData %>%
+  group_by(watershed) %>%
+  summarise(
+    mean_levo_flux_kg_per_yr = mean(Levo_Flux_kg_per_yr, na.rm = TRUE), # na.rm = TRUE ignores NA values and mean is the average
+    sd_levo_flux_kg_per_yr = sd(Levo_Flux_kg_per_yr, na.rm = TRUE) #to determine the standard deviation associated with the average per watershed
+  )
+
+# View the average and standard deviation of annual levoglucosan fluxes for each watershed
+print(Levo_Flux_Average)
+```
+
+#Calculate annual amount of levoglucosan leaving these 5 watersheds
+```{r}
+# Add the annual flux of levoglucosan from each watershed together
+total_mean_levo_kg_per_yr <- sum(Levo_Flux_Average$mean_levo_flux_kg_per_yr)
+
+# Propagate standard deviation for the summation of the annual levoglucosan flux from all watersheds
+total_sd_levo_kg_per_yr <- sqrt(sum(Levo_Flux_Average$sd_levo_flux_kg_per_yr^2))
+
+# Combine results into a new data frame
+Annual_Levo_Flux <- data.frame(
+  All_Watersheds_levo_kg_per_yr = total_mean_levo_kg_per_yr,
+  All_Watersheds_levo_sd = total_sd_levo_kg_per_yr
+)
+
+# View the result
+print(Annual_Levo_Flux)
+```
+
+#Calculate the annual amount of low-temperature PyC that could be leaving these 5 watersheds
+```{r}
+All_Watersheds_ltPyC_kg_per_yr <- Annual_Levo_Flux$All_Watersheds_levo_kg_per_yr *100 / 1.7 #converts levoglucosan to low-temperature PyC. This is based on the percentage of total DOC leached from woody char created at 250C that is levoglucosan. Essentially for woody char leachates, 1.7% of low-temperature PyC is levoglucosan. See Norwood et al (2013) for further details. 
+
+All_Watersheds_ltPyC_sd <- Annual_Levo_Flux$All_Watersheds_levo_sd *100 / 1.7 #converts the standard deviation as well
+
+# Combine results into a new data frame
+Annual_ltPyC_Flux <- data.frame(
+  All_Watersheds_ltPyC_kg_per_yr = All_Watersheds_ltPyC_kg_per_yr,
+  All_Watersheds_ltPyC_sd = All_Watersheds_ltPyC_sd
+)
+
+print(Annual_ltPyC_Flux)
+```
+
+#Estimate the emissions of CO2 assuming 100% remineralization of levoglucosan and low-temp PyC
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
