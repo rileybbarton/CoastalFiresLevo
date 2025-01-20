@@ -77,7 +77,26 @@ print(Annual_ltPyC_Flux)
 
 #Estimate the emissions of CO2 assuming 100% remineralization of levoglucosan and low-temp PyC
 ```{r}
+#As there are 6 carbon atoms in each levoglucosan molecule, assuming complete remineralization, the degradation of one levoglucosan molecule could produce 6 CO2 molecules. As such, the possible amount of CO2 released from levoglucosan degradation in these systems in the first year post-fire is the combined flux of levoglucosan from all watersheds multiplied by 6. 
 
+#levoglucosan
+CO2_Emission_Levo_mean <- total_mean_levo_kg_per_yr * 6 * 1 #6 is to convert to possible CO2 molecules, 1 is for 1 year post-fire
+CO2_Emission_Levo_sd <- total_sd_levo_kg_per_yr *6 *1 #standard deviation propagation
+  
+#low-temperature PyC
+CO2_Emission_ltPyC_mean <- All_Watersheds_ltPyC_kg_per_yr * 1 #1 is for the year post-fire
+CO2_Emission_ltPyC_sd <- All_Watersheds_ltPyC_sd *1 #standard deviation propagation
+
+# Combine results into a new data frame
+Annual_CO2_from_ltPyC_levo <- data.frame(
+  Annual_CO2_from_levo = CO2_Emission_Levo_mean,
+  Annual_CO2_from_levo_sd = CO2_Emission_Levo_sd,
+  Annual_CO2_from_ltPyC = CO2_Emission_ltPyC_mean,
+  Annual_CO2_from_lyPyC_sd = CO2_Emission_ltPyC_sd
+)
+
+print(Annual_CO2_from_ltPyC_levo)
+  
 ```
 
 
