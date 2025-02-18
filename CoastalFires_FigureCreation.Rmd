@@ -8,15 +8,12 @@ output: html_document
 ```{r}
 library(ggplot2)
 library(grid)
-library(extrafont)
 library(tidyr)
 library(dplyr)
 library(lubridate)
-library(scales)
 ```
-```{r}
-library(dplyr)
 
+```{r}
 # Calculate average value for each date
 average_values <- CombinedData %>%
   group_by(time_since_fire_day) %>%
@@ -80,6 +77,7 @@ class(DischargeData$PESC_DateTime)
 class(DischargeData$SAN_DateTime)
 class(DischargeData$SCT_DateTime)
 ```
+
 
 Figure 2: The discharge (blue lines) and concentration of levoglucosan (yellow to dark red markers) from (A) the San Lorenzo River (B) Pescadero Creek (C) Majors Creek, (D) Laguna Creek, and (E) Scott Creek. The CZU Lightning Complex Fires (indicated by fire symbol) burned from August 16th until September 21st.
 ```{r}
