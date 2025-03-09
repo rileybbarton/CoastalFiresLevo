@@ -1,6 +1,0 @@
-"0","# Plot the chart for sample with"
-"0","ggplot(PyOMAll, aes(`DOC (mg-C L¯¹)`, `Levoglucosan (ppb)`)) +"
-"0","  geom_point(size = 5, color = ""#99AABB"") + xlim(0,15) + ylim(0,40)"
-"2","Warning:"
-"2"," [38;5;232mRemoved 2 rows containing missing values or values outside the scale range (`geom_point()`).[39m
-"
