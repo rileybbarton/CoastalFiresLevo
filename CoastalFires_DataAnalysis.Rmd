@@ -4,31 +4,44 @@ author: "RB"
 date: "2024-09-13"
 output: html_document
 ---
-#load necessary libraries
+Install Necessary Packages
 ```{r}
+install.packages("ggrepel")
+install.packages("vegan")
+install.packages("ggplot2")
+install.packages("dplyr")
+install.packages("tidyverse")
+```
+
+Load necessary libraries
+```{r}
+library(ggrepel)
+library(vegan)
 library(ggplot2)
 library(dplyr)
 library(tidyverse)
-library(here)
-library(randomForest)
-library(caret)
-library(vegan)
-library(ggrepel)
 ```
 
-#set working director, load data files, and rename them
+Set Input and Output Directory, load data files, and rename them
 ```{r}
-setwd("C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/")
-CombinedData <- readr::read_csv("CoastalFires_CombinedData.csv")
-DischargeData <- readr::read_csv("CoastalFires_DischargeData.csv")
+#Input_Files folder should contains the following files: CoastalFires_DischargeData.csv
+input_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/Input_Files" # Change this to match your data frame location. Make sure it ends in "/Input_Files"
+
+#Output Files folder should contains the following files:
+#From ESS-DIVE: CoastalFires_DataAnalysis.Rmd
+output_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/"  # Change this to match your scripts location
+
+CombinedData <- readr::read_csv(file.path(output_folder,"CoastalFires_CombinedData.csv"))
+DischargeData <- readr::read_csv(file.path(input_folder, "CoastalFires_DischargeData.csv"))
 ``` 
+
 Test data for normality using Shapiro-Wilk Test
 ```{r}
 #are all variables normally distributed?
 #filter to only numeric data
 numeric_columns <- sapply(CombinedData, is.numeric)
 Data_numeric <- CombinedData[, numeric_columns]
-Data_numeric <- Data_numeric %>% select(-lat, -long)
+Data_numeric <- Data_numeric %>% select(-Latitude, -Longitude)
 
 # Apply Shapiro-Wilk test and create a readable summary
 shapiro_results <- sapply(Data_numeric, function(x) {
@@ -45,29 +58,29 @@ rownames(shapiro_df) <- NULL
 print(shapiro_df)
 ```
 
-#The differences of concentrations and key ratios by watershed
+The differences of concentrations and key ratios by watershed
 ```{r}
 #is the concentration of levoglucosan different across watersheds?
-kruskal_test_levo <- kruskal.test(levo_micro_gram_per_liter ~ watershed, data = CombinedData)
+kruskal_test_levo <- kruskal.test(levo_micro_gram_per_liter ~ Watershed, data = CombinedData)
 print(kruskal_test_levo)
-kruskal_test_Qnorm_levo <- kruskal.test(Q_norm_levo ~ watershed, data = CombinedData)
+kruskal_test_Qnorm_levo <- kruskal.test(Q_norm_levo ~ Watershed, data = CombinedData)
 print(kruskal_test_Qnorm_levo)
 #is the ratio of levoglucosan to bulk DOC different across watersheds?
-kruskal_test_levotoDOC <- kruskal.test(Levo_DOC_perc ~ watershed, data = CombinedData)
+kruskal_test_levotoDOC <- kruskal.test(Levo_DOC_percent ~ Watershed, data = CombinedData)
 print(kruskal_test_levotoDOC)
 #is the ratio of levoglucosan to DBC different across watersheds?
-kruskal_test_levotoDBC <- kruskal.test(Levo_DBC ~ watershed, data = CombinedData)
+kruskal_test_levotoDBC <- kruskal.test(Levo_DBC ~ Watershed, data = CombinedData)
 print(kruskal_test_levotoDBC)
 ```
 
-#since there is a significant difference between watersheds for Q-norm levoglucosan are significantly different?
+Is a significant difference between watersheds for Q-norm levoglucosan?
 ```{r}
 #Q_norm_levo is the concentration of levoglucosan divided by discharge
-wilcoxon_test_Qnorm_levo <- pairwise.wilcox.test(CombinedData$Q_norm_levo, CombinedData$watershed, p.adjust.method = "bonferroni")
+wilcoxon_test_Qnorm_levo <- pairwise.wilcox.test(CombinedData$Q_norm_levo, CombinedData$Watershed, p.adjust.method = "bonferroni")
 print(wilcoxon_test_Qnorm_levo)
 ```
 
-#Time since fire - Spearman's rank
+Time since fire - Spearman's rank
 ```{r}
 #make a table to showcase the coefficients and p-values
 # Perform Spearman's rank correlation using the averaged data
@@ -75,11 +88,11 @@ spearman_corr_levo_ppb <- cor.test(CombinedData$time_since_fire_day, CombinedDat
 
 spearman_corr_Qnorm_levo <- cor.test(CombinedData$time_since_fire_day, CombinedData$Q_norm_levo, method = "spearman", use = "pairwise.complete.obs")
 
-spearman_corr_levoDOC <- cor.test(CombinedData$time_since_fire_day, CombinedData$Levo_DOC_perc, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_levoDOC <- cor.test(CombinedData$time_since_fire_day, CombinedData$Levo_DOC_percent, method = "spearman", use = "pairwise.complete.obs")
 
 spearman_corr_DBC_ppm <- cor.test(CombinedData$time_since_fire_day, CombinedData$DBC_mgC_per_L, method = "spearman", use = "pairwise.complete.obs")
 
-spearman_corr_dbcDOC <- cor.test(CombinedData$time_since_fire_day, CombinedData$DBC_DOC_perc, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_dbcDOC <- cor.test(CombinedData$time_since_fire_day, CombinedData$DBC_DOC_percent, method = "spearman", use = "pairwise.complete.obs")
 
 # Extract p-values and rho values
 results <- data.frame(
@@ -104,7 +117,7 @@ results <- data.frame(
 print(results)
 ```
 
-#Miscellaneous Correlation Significant Tests for Levoglucosan Concentrations
+Miscellaneous Correlation Significant Tests for Levoglucosan Concentrations
 ``` {r}
 #by burn extent
 spearman_corr_BE <- cor.test(CombinedData$Burn_Extent_percent, CombinedData$levo_micro_gram_per_liter, method = "spearman", use = "pairwise.complete.obs")
@@ -119,7 +132,7 @@ spearman_corr_area <- cor.test(CombinedData$Area_square_kilometer, CombinedData$
 #by watershed slope
 spearman_corr_slope <- cor.test(CombinedData$Average_slope_percent, CombinedData$levo_micro_gram_per_liter, method = "spearman", use = "pairwise.complete.obs")
 #by discharge
-spearman_corr_Q <- cor.test(CombinedData$Q_m_sq_per_sec, CombinedData$levo_micro_gram_per_liter, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_Q <- cor.test(CombinedData$Discharge_cms, CombinedData$levo_micro_gram_per_liter, method = "spearman", use = "pairwise.complete.obs")
 
 # Extract p-values and rho values
 results <- data.frame(
@@ -152,7 +165,7 @@ print(results)
 
 ```
 
-#Miscellaneous Correlation Significant Tests for Discharge normalized Levoglucosan concentrations
+Miscellaneous Correlation Significant Tests for Discharge normalized Levoglucosan concentrations
 ``` {r}
 #by burn extent
 spearman_corr_BE <- cor.test(CombinedData$Burn_Extent_percent, CombinedData$Q_norm_levo, method = "spearman", use = "pairwise.complete.obs")
@@ -197,22 +210,22 @@ results <- data.frame(
 print(results)
 ```
 
-#Miscellaneous Correlation Significant Tests for Levo:DOC
+Miscellaneous Correlation Significant Tests for Levo:DOC
 ``` {r}
 #by burn extent
-spearman_corr_BE <- cor.test(CombinedData$Burn_Extent_percent, CombinedData$Levo_DOC_perc, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_BE <- cor.test(CombinedData$Burn_Extent_percent, CombinedData$Levo_DOC_percent, method = "spearman", use = "pairwise.complete.obs")
 #by low severity burn extent
-spearman_corr_BElow <- cor.test(CombinedData$Area_low_severity_percent, CombinedData$Levo_DOC_perc, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_BElow <- cor.test(CombinedData$Area_low_severity_percent, CombinedData$Levo_DOC_percent, method = "spearman", use = "pairwise.complete.obs")
 #by low to moderate severity burn extent
-spearman_corr_BElowtomod <- cor.test(CombinedData$Area_low_to_mod_severity_percent, CombinedData$Levo_DOC_perc, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_BElowtomod <- cor.test(CombinedData$Area_low_to_mod_severity_percent, CombinedData$Levo_DOC_percent, method = "spearman", use = "pairwise.complete.obs")
 #by moderate to high severity burn extent
-spearman_corr_BEmodtohigh <- cor.test(CombinedData$Area_mod_to_high_severity_percent, CombinedData$Levo_DOC_perc, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_BEmodtohigh <- cor.test(CombinedData$Area_mod_to_high_severity_percent, CombinedData$Levo_DOC_percent, method = "spearman", use = "pairwise.complete.obs")
 #by watershed area
-spearman_corr_area <- cor.test(CombinedData$Area_square_kilometer, CombinedData$Levo_DOC_perc, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_area <- cor.test(CombinedData$Area_square_kilometer, CombinedData$Levo_DOC_percent, method = "spearman", use = "pairwise.complete.obs")
 #by watershed slope
-spearman_corr_slope <- cor.test(CombinedData$Average_slope_percent, CombinedData$Levo_DOC_perc, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_slope <- cor.test(CombinedData$Average_slope_percent, CombinedData$Levo_DOC_percent, method = "spearman", use = "pairwise.complete.obs")
 #by discharge
-spearman_corr_Q <- cor.test(CombinedData$Q_m_sq_per_sec, CombinedData$Levo_DOC_perc, method = "spearman", use = "pairwise.complete.obs")
+spearman_corr_Q <- cor.test(CombinedData$Discharge_cms, CombinedData$Levo_DOC_percent, method = "spearman", use = "pairwise.complete.obs")
 
 #Extract p-values and rho values
 results <- data.frame(
@@ -243,39 +256,39 @@ results <- data.frame(
 print(results)
 ```
 
-#NMDS
-#Prepare data for NMDS
+NMDS
+Prepare data for NMDS
 ```{r}
 #Isolate PyC concentrations and relevant ratios 
-PyC_conc_rat <- CombinedData[, c("levo_micro_gram_per_liter", "DOC_mgC_per_L", "DBC_mgC_per_L", "DBC_DOC_perc", "Levo_DOC_perc")]
+PyC_conc_rat <- CombinedData[, c("levo_micro_gram_per_liter", "DOC_mgC_per_L", "DBC_mgC_per_L", "DBC_DOC_percent", "Levo_DOC_percent")]
 
 #put levoglucosan concentrations into the same units as DOC and DBC
 PyC_conc_rat$levo_mg_per_L <- PyC_conc_rat$levo_micro_gram_per_liter/1000 #dividing micrograms per liter by 1000 to get levoglucosan concentrations in milligrams per liter
 
 #delete the levoglucosan column with concentrations in micrograms per liter
-analyte_data_conc_rat <- PyC_conc_rat[,c("levo_mg_per_L", "DOC_mgC_per_L", "DBC_mgC_per_L", "DBC_DOC_perc", "Levo_DOC_perc")]
+analyte_data_conc_rat <- PyC_conc_rat[,c("levo_mg_per_L", "DOC_mgC_per_L", "DBC_mgC_per_L", "DBC_DOC_percent", "Levo_DOC_percent")]
 
 View(analyte_data_conc_rat)
 ```
 
-#Run NMDS
+Run NMDS
 ```{r}
 nmds_result <- metaMDS(analyte_data_conc_rat, k = 2, trymax = 100)
 print(nmds_result)
 ```
 
 
-#Plot NMDS Results - Full NMDS
+Plot NMDS Results - Full NMDS
 ```{r}
 # Extract NMDS scores for plotting
 nmds_scores <- as.data.frame(scores(nmds_result, display = "sites"))
 nmds_species<-as.data.frame(scores(nmds_result, display="species"))
-nmds_scores$Site <- CombinedData$watershed  # Add Site info for coloring
+nmds_scores$Site <- CombinedData$Watershed  # Add Site info for coloring
 nmds_scores$time <- CombinedData$time_since_fire_day #this is for coloring the data points by time
-nmds_scores$watershed <- CombinedData$watershed #this is for the point shape by watershed
+nmds_scores$watershed <- CombinedData$Watershed #this is for the point shape by watershed
 
 # Environmental variables 
-env_variables <- CombinedData[c("time_since_fire_day", "Area_low_severity_percent", "Q_m_sq_per_sec", "Area_square_kilometer", "Average_slope_percent", "Burn_Extent_percent", "Area_low_to_mod_severity_percent", "Area_mod_to_high_severity_percent")]
+env_variables <- CombinedData[c("time_since_fire_day", "Area_low_severity_percent", "Discharge_cms", "Area_square_kilometer", "Average_slope_percent", "Burn_Extent_percent", "Area_low_to_mod_severity_percent", "Area_mod_to_high_severity_percent")]
 
 #assign environmental variables to df
 envfit_result <- envfit(nmds_result, env_variables, permutations = 999)
@@ -335,20 +348,20 @@ ggplot(nmds_scores, aes(x = NMDS1, y = NMDS2)) +
 envfit_result
 ```
 
-#Plot NMDS Results - Simplified NMDS Figure
+Plot NMDS Results - Simplified NMDS Figure
 ```{r}
 # Extract NMDS scores for plotting
 nmds_scores <- as.data.frame(scores(nmds_result, display = "sites"))
 nmds_species<-as.data.frame(scores(nmds_result, display="species"))
-nmds_scores$Site <- CombinedData$watershed  # Add Site info for coloring
+nmds_scores$Site <- CombinedData$Watershed  # Add Site info for coloring
 nmds_scores$time <- CombinedData$time_since_fire_day #this is for coloring the data points by time
-nmds_scores$watershed <- CombinedData$watershed #this is for the point shape by watershed
+nmds_scores$watershed <- CombinedData$Watershed #this is for the point shape by watershed
 
 # Environmental variables (adjust to your desired variables)
-env_variables <- CombinedData[c("time_since_fire_day", "Area_low_severity_percent", "Q_m_sq_per_sec", "Area_mod_to_high_severity_percent", "Area_square_kilometer")]
+env_variables <- CombinedData[c("time_since_fire_day", "Area_low_severity_percent", "Discharge_cms", "Area_mod_to_high_severity_percent", "Area_square_kilometer")]
 
 #If want ALL environmental variables for sasha, use the code below
-#env_variables <- CombinedData[c("time_since_fire_day", "Area_low_severity_percent", "Q_m_sq_per_sec", "Area_square_kilometer", "Average_slope_percent", "Burn_Extent_percent", "Area_low_to_mod_severity_percent", "Area_mod_to_high_severity_percent")]
+#env_variables <- CombinedData[c("time_since_fire_day", "Area_low_severity_percent", "Discharge_cms", "Area_square_kilometer", "Average_slope_percent", "Burn_Extent_percent", "Area_low_to_mod_severity_percent", "Area_mod_to_high_severity_percent")]
 
 #assign environmental variables to df
 envfit_result <- envfit(nmds_result, env_variables, permutations = 999)
@@ -403,469 +416,4 @@ ggplot(nmds_scores, aes(x = NMDS1, y = NMDS2)) +
 
 #Determine which vectors are statistically significant
 envfit_result
-```
-
-
-
-
-
-
-
-
-
-#Random Forest Models
-
-#prepare data for RFM
-```{r}
-#remove any missing values
-na.omit(CombinedData) 
-#ensure categorical variables are factors
-CombinedData$watershed <- as.factor(CombinedData$watershed) 
-```
-
-#RFM for Levoglucosan concentrations
-```{r}
-#Split levoglucosan dataset into model and test datasets
-set.seed(123)  # For reproducibility
-train_idx <- createDataPartition(CombinedData$levo_micro_gram_per_liter, p = 0.7, list = FALSE)
-train_data <- CombinedData[train_idx, ]
-test_data <- CombinedData[-train_idx, ]
-
-#Fit the RFM to the levoglucosan dataset
-
-# Build the model on the training data
-rf_levoglucosan <- randomForest(
-    levo_micro_gram_per_liter ~ time_since_fire_day + Q_m_sq_per_sec + Area_square_kilometer + Average_slope_percent + Burn_Extent_percent + Area_low_severity_percent + Area_low_to_mod_severity_percent + Area_mod_to_high_severity_percent,
-    data = train_data,
-    importance = TRUE,
-    ntree = 500
-)
-
-# Print a summary of the model
-print(rf_levoglucosan)
-varImpPlot(rf_levoglucosan)
-
-#Evaluate RFM Performance
-
-#predict of the test set
-predictions <- predict(rf_levoglucosan, newdata = test_data)
-
-#assess model accuracy
-# Calculate RMSE and R²
-rmse <- sqrt(mean((predictions - test_data$levo_micro_gram_per_liter)^2))
-r_squared <- cor(predictions, test_data$levo_micro_gram_per_liter)^2
-
-cat("RMSE:", rmse, "\n")
-cat("R²:", r_squared, "\n")
-
-#Analyze varibale importance
-importance(rf_levoglucosan)
-
-#visualize variable importance
-varImpPlot(rf_levoglucosan)
-
-#Tune the RFM
-
-control <- trainControl(method = "cv", number = 5)  # 5-fold cross-validation
-
-tune_grid <- expand.grid(
-    .mtry = seq(2, ncol(train_data) - 1, by = 1)  # Tune mtry
-)
-
-rf_tuned <- train(
-    levo_micro_gram_per_liter ~ time_since_fire_day + Q_m_sq_per_sec + Area_square_kilometer + Average_slope_percent + Burn_Extent_percent + Area_low_severity_percent + Area_low_to_mod_severity_percent + Area_mod_to_high_severity_percent,
-    data = train_data,
-    method = "rf",
-    tuneGrid = tune_grid,
-    trControl = control,
-    importance = TRUE
-)
-
-#use best model
-levo_best_rf_model <- rf_tuned$finalModel
-varImpPlot(levo_best_rf_model)
-```
-#Plotting the RFM Results for Levoglucosan Concentrations
-```{r}
-# Extract and format variable importance
-var_imp <- as.data.frame(importance(rf_levoglucosan))
-var_imp$Variable <- rownames(var_imp)  # Convert rownames to a column
-
-# Rename columns to something more user-friendly if necessary
-colnames(var_imp) <- c("MeanDecreaseAccuracy", "MeanDecreaseGini", "Variable")
-
-# Replace variable names with custom labels
-custom_labels <- c(
-    "Time Since Fire", "Flow Rate (m³/s)", "Area (km²)", "Slope (%)",
-    "Burn Extent (%)", "Low Severity Area (%)", 
-    "Low-Moderate Severity Area (%)", "Moderate-High Severity Area (%)"
-)
-var_imp$Variable <- factor(custom_labels, levels = custom_labels)
-
-#Plotting variable importance for visual clarity
-ggplot(var_imp, aes(x = reorder(Variable, MeanDecreaseAccuracy), y = MeanDecreaseAccuracy)) +
-    geom_bar(stat = "identity", fill = "pink") +
-    coord_flip() +
-    labs(
-        title = "Levoglucosan - Variable Importance Plot",
-        x = "Variables",
-        y = "Mean Decrease in Accuracy"
-    ) +
-    theme_minimal(base_size = 14) +
-    theme(
-        panel.grid = element_blank(),  # Remove gridlines
-        plot.title = element_text(hjust = 0.5),  # Center the title
-        axis.line = element_line(),  # Add axis lines
-        axis.ticks = element_line(),  # Add axis ticks
-        axis.ticks.length = unit(0.2, "cm")  # Customize tick length
-    )
-
-#Display key statistical values in a tabular format
-# Extract variable importance
-levo_importance_data <- importance(levo_best_rf_model)
-
-# Convert to a data frame for better readability
-levo_importance_table <- as.data.frame(levo_importance_data)
-levo_importance_table$Variable <- rownames(levo_importance_table)
-rownames(levo_importance_table) <- NULL
-
-# Print the table
-print(levo_importance_table)
-```
-
-
-#RFM for for dissolved black carbon :) 
-```{r}
-#Split DBC dataset into model and test datasets
-set.seed(123)  # For reproducibility
-DBC_train_idx <- createDataPartition(CombinedData$DBC_mgC_per_L, p = 0.7, list = FALSE)
-DBC_train_data <- CombinedData[train_idx, ]
-DBC_test_data <- CombinedData[-train_idx, ]
-
-#Fit the RFM to the levoglucosan dataset
-
-# Build the model on the training data
-rf_DBC <- randomForest(
-    DBC_mgC_per_L ~ time_since_fire_day + Q_m_sq_per_sec + Area_square_kilometer + Average_slope_percent + Burn_Extent_percent + Area_low_severity_percent + Area_low_to_mod_severity_percent + Area_mod_to_high_severity_percent,
-    data = train_data,
-    importance = TRUE,
-    ntree = 500
-)
-
-# Print a summary of the model
-print(rf_DBC)
-varImpPlot(rf_DBC)
-
-#Evaluate RFM Performance
-#predict of the test set
-predictions <- predict(rf_DBC, newdata = DBC_test_data)
-
-#assess model accuracy
-# Calculate RMSE and R²
-rmse <- sqrt(mean((predictions - DBC_test_data$DBC_mgC_per_L)^2))
-r_squared <- cor(predictions, DBC_test_data$DBC_mgC_per_L)^2
-
-cat("RMSE:", rmse, "\n")
-cat("R²:", r_squared, "\n")
-
-##Analyze varibale importance
-
-#something
-importance(rf_DBC)
-
-#visualize variable importance
-varImpPlot(rf_DBC)
-
-#tune the DBC RFM
-control <- trainControl(method = "cv", number = 5)  # 5-fold cross-validation
-
-tune_grid <- expand.grid(
-    .mtry = seq(2, ncol(DBC_train_data) - 1, by = 1)  # Tune mtry
-)
-
-DBC_rf_tuned <- train(
-    DBC_mgC_per_L ~ time_since_fire_day + Q_m_sq_per_sec + Area_square_kilometer + Average_slope_percent + Burn_Extent_percent + Area_low_severity_percent + Area_low_to_mod_severity_percent + Area_mod_to_high_severity_percent,
-    data = train_data,
-    method = "rf",
-    tuneGrid = tune_grid,
-    trControl = control,
-    importance = TRUE
-)
-
-
-#use best model
-DBC_best_rf_model <- DBC_rf_tuned$finalModel
-varImpPlot(DBC_best_rf_model)
-
-```
-
-#Plotting the RFM Results for DBC Concentrations
-```{r}
-# Extract and format variable importance
-var_imp <- as.data.frame(importance(DBC_best_rf_model))
-var_imp$Variable <- rownames(var_imp)  # Convert rownames to a column
-
-# Rename columns to something more user-friendly if necessary
-colnames(var_imp) <- c("MeanDecreaseAccuracy", "MeanDecreaseGini", "Variable")
-
-# Replace variable names with custom labels
-custom_labels <- c(
-    "Time Since Fire", "Discharge (m³/s)", "Area (km²)", "Slope (%)",
-    "Burn Extent (%)", "Low Severity Area (%)", 
-    "Low-Moderate Severity Area (%)", "Moderate-High Severity Area (%)"
-)
-var_imp$Variable <- factor(custom_labels, levels = custom_labels)
-
-#Plotting variable importance for visual clarity
-ggplot(var_imp, aes(x = reorder(Variable, MeanDecreaseAccuracy), y = MeanDecreaseAccuracy)) +
-    geom_bar(stat = "identity", fill = "pink") +
-    coord_flip() +
-    labs(
-        title = "DBC - Variable Importance Plot",
-        x = "Variables",
-        y = "Mean Decrease in Accuracy"
-    ) +
-    theme_minimal(base_size = 14) +
-    theme(
-        panel.grid = element_blank(),  # Remove gridlines
-        plot.title = element_text(hjust = 0.5),  # Center the title
-        axis.line = element_line(),  # Add axis lines
-        axis.ticks = element_line(),  # Add axis ticks
-        axis.ticks.length = unit(0.2, "cm")  # Customize tick length
-    )
-
-#Display key statistical values in a tabular format
-# Extract variable importance
-DBC_importance_data <- importance(DBC_best_rf_model)
-
-# Convert to a data frame for better readability
-DBC_importance_table <- as.data.frame(DBC_importance_data)
-DBC_importance_table$Variable <- rownames(DBC_importance_table)
-rownames(importance_table) <- NULL
-
-# Print the table
-print(importance_table)
-```
-#RFM for Levo:DOC :) 
-#```{r}
-#Split DBC dataset into model and test datasets
-set.seed(123)  # For reproducibility
-LevoDOC_train_idx <- createDataPartition(CombinedData$Levo_DOC_perc, p = 0.7, list = FALSE)
-LevoDOC_train_data <- CombinedData[train_idx, ]
-LevoDOC_test_data <- CombinedData[-train_idx, ]
-
-#Fit the RFM to the levoglucosan dataset
-
-# Build the model on the training data
-rf_LevoDOC <- randomForest(
-    Levo_DOC_perc ~ time_since_fire_day + Q_m_sq_per_sec + Area_square_kilometer + Average_slope_percent + Burn_Extent_percent + Area_low_severity_percent + Area_low_to_mod_severity_percent + Area_mod_to_high_severity_percent,
-    data = train_data,
-    importance = TRUE,
-    ntree = 500
-)
-
-# Print a summary of the model
-print(rf_LevoDOC)
-varImpPlot(rf_LevoDOC)
-
-#Evaluate RFM Performance
-#predict of the test set
-predictions <- predict(rf_LevoDOC, newdata = LevoDOC_test_data)
-
-#assess model accuracy
-# Calculate RMSE and R²
-rmse <- sqrt(mean((predictions - LevoDOC_test_data$Levo_DOC_perc)^2))
-r_squared <- cor(predictions, LevoDOC_test_data$Levo_DOC_perc)^2
-
-cat("RMSE:", rmse, "\n")
-cat("R²:", r_squared, "\n")
-
-##Analyze varibale importance
-
-#something
-importance(rf_LevoDOC)
-
-#visualize variable importance
-varImpPlot(rf_LevoDOC)
-
-#tune the DBC RFM
-control <- trainControl(method = "cv", number = 5)  # 5-fold cross-validation
-
-tune_grid <- expand.grid(
-    .mtry = seq(2, ncol(LevoDOC_train_data) - 1, by = 1)  # Tune mtry
-)
-
-LevoDOC_rf_tuned <- train(
-    Levo_DOC_perc ~ time_since_fire_day + Q_m_sq_per_sec + Area_square_kilometer + Average_slope_percent + Burn_Extent_percent + Area_low_severity_percent + Area_low_to_mod_severity_percent + Area_mod_to_high_severity_percent,
-    data = train_data,
-    method = "rf",
-    tuneGrid = tune_grid,
-    trControl = control,
-    importance = TRUE
-)
-
-
-#use best model
-LevoDOC_best_rf_model <- DBC_rf_tuned$finalModel
-varImpPlot(LevoDOC_best_rf_model)
-
-```
-
-#Plotting the RFM Results for Levo:DOC Concentrations
-#```{r}
-# Extract and format variable importance
-var_imp <- as.data.frame(importance(LevoDOC_best_rf_model))
-var_imp$Variable <- rownames(var_imp)  # Convert rownames to a column
-
-# Rename columns to something more user-friendly if necessary
-colnames(var_imp) <- c("MeanDecreaseAccuracy", "MeanDecreaseGini", "Variable")
-
-# Replace variable names with custom labels
-custom_labels <- c(
-    "Time Since Fire", "Discharge (m³/s)", "Area (km²)", "Slope (%)",
-    "Burn Extent (%)", "Low Severity Area (%)", 
-    "Low-Moderate Severity Area (%)", "Moderate-High Severity Area (%)"
-)
-var_imp$Variable <- factor(custom_labels, levels = custom_labels)
-
-#Plotting variable importance for visual clarity
-ggplot(var_imp, aes(x = reorder(Variable, MeanDecreaseAccuracy), y = MeanDecreaseAccuracy)) +
-    geom_bar(stat = "identity", fill = "pink") +
-    coord_flip() +
-    labs(
-        title = "Levo:DOC - Variable Importance Plot",
-        x = "Variables",
-        y = "Mean Decrease in Accuracy"
-    ) +
-    theme_minimal(base_size = 14) +
-    theme(
-        panel.grid = element_blank(),  # Remove gridlines
-        plot.title = element_text(hjust = 0.5),  # Center the title
-        axis.line = element_line(),  # Add axis lines
-        axis.ticks = element_line(),  # Add axis ticks
-        axis.ticks.length = unit(0.2, "cm")  # Customize tick length
-    )
-
-#Display key statistical values in a tabular format
-# Extract variable importance
-LevoDOC_importance_data <- importance(LevoDOC_best_rf_model)
-
-# Convert to a data frame for better readability
-LevoDOC_importance_table <- as.data.frame(LevoDOC_importance_data)
-LevoDOC_importance_table$Variable <- rownames(LevoDOC_importance_table)
-rownames(LevoDOC_importance_table) <- NULL
-
-# Print the table
-print(LevoDOC_importance_table)
-```
-#RFM for DBC:DOC :) 
-#```{r}
-#Split DBC dataset into model and test datasets
-set.seed(123)  # For reproducibility
-DBCDOC_train_idx <- createDataPartition(CombinedData$DBC_DOC_perc, p = 0.7, list = FALSE)
-DBCDOC_train_data <- CombinedData[train_idx, ]
-DBCDOC_test_data <- CombinedData[-train_idx, ]
-
-#Fit the RFM to the levoglucosan dataset
-
-# Build the model on the training data
-rf_DBCDOC <- randomForest(
-    DBC_DOC_perc ~ time_since_fire_day + Q_m_sq_per_sec + Area_square_kilometer + Average_slope_percent + Burn_Extent_percent + Area_low_severity_percent + Area_low_to_mod_severity_percent + Area_mod_to_high_severity_percent,
-    data = train_data,
-    importance = TRUE,
-    ntree = 500
-)
-
-# Print a summary of the model
-print(rf_DBCDOC)
-varImpPlot(rf_DBCDOC)
-
-#Evaluate RFM Performance
-#predict of the test set
-predictions <- predict(rf_DBCDOC, newdata = DBCDOC_test_data)
-
-#assess model accuracy
-# Calculate RMSE and R²
-rmse <- sqrt(mean((predictions - DBCDOC_test_data$DBC_DOC_perc)^2))
-r_squared <- cor(predictions, DBCDOC_test_data$DBC_DOC_perc)^2
-
-cat("RMSE:", rmse, "\n")
-cat("R²:", r_squared, "\n")
-
-##Analyze varibale importance
-
-#something
-importance(rf_DBCDOC)
-
-#visualize variable importance
-varImpPlot(rf_DBCDOC)
-
-#tune the DBC RFM
-control <- trainControl(method = "cv", number = 5)  # 5-fold cross-validation
-
-tune_grid <- expand.grid(
-    .mtry = seq(2, ncol(DBCDOC_train_data) - 1, by = 1)  # Tune mtry
-)
-
-DBCDOC_rf_tuned <- train(
-    DBC_DOC_perc ~ time_since_fire_day + Q_m_sq_per_sec + Area_square_kilometer + Average_slope_percent + Burn_Extent_percent + Area_low_severity_percent + Area_low_to_mod_severity_percent + Area_mod_to_high_severity_percent,
-    data = train_data,
-    method = "rf",
-    tuneGrid = tune_grid,
-    trControl = control,
-    importance = TRUE
-)
-
-
-#use best model
-DBCDOC_best_rf_model <- DBC_rf_tuned$finalModel
-varImpPlot(DBCDOC_best_rf_model)
-
-```
-#Plotting the RFM Results for DBC:DOC Concentrations
-#```{r}
-# Extract and format variable importance
-var_imp <- as.data.frame(importance(DBCDOC_best_rf_model))
-var_imp$Variable <- rownames(var_imp)  # Convert rownames to a column
-
-# Rename columns to something more user-friendly if necessary
-colnames(var_imp) <- c("MeanDecreaseAccuracy", "MeanDecreaseGini", "Variable")
-
-# Replace variable names with custom labels
-custom_labels <- c(
-    "Time Since Fire", "Discharge (m³/s)", "Area (km²)", "Slope (%)",
-    "Burn Extent (%)", "Low Severity Area (%)", 
-    "Low-Moderate Severity Area (%)", "Moderate-High Severity Area (%)"
-)
-var_imp$Variable <- factor(custom_labels, levels = custom_labels)
-
-#Plotting variable importance for visual clarity
-ggplot(var_imp, aes(x = reorder(Variable, MeanDecreaseAccuracy), y = MeanDecreaseAccuracy)) +
-    geom_bar(stat = "identity", fill = "pink") +
-    coord_flip() +
-    labs(
-        title = "Levo:DOC - Variable Importance Plot",
-        x = "Variables",
-        y = "Mean Decrease in Accuracy"
-    ) +
-    theme_minimal(base_size = 14) +
-    theme(
-        panel.grid = element_blank(),  # Remove gridlines
-        plot.title = element_text(hjust = 0.5),  # Center the title
-        axis.line = element_line(),  # Add axis lines
-        axis.ticks = element_line(),  # Add axis ticks
-        axis.ticks.length = unit(0.2, "cm")  # Customize tick length
-    )
-
-#Display key statistical values in a tabular format
-# Extract variable importance
-DBCDOC_importance_data <- importance(DBCDOC_best_rf_model)
-
-# Convert to a data frame for better readability
-DBCDOC_importance_table <- as.data.frame(DBCDOC_importance_data)
-DBCDOC_importance_table$Variable <- rownames(DBCDOC_importance_table)
-rownames(DBCDOC_importance_table) <- NULL
-
-# Print the table
-print(DBCDOC_importance_table)
 ```

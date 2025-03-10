@@ -6,12 +6,22 @@ output: html_document
 ---
 Before starting, find and download necessary files:
 
+Levoglucosan data from ESS-DIVE:
+  CoastalFires_LevoglucosanData.csv
+
 Black carbon data from CUAHSI Hydroshare:
 Barton, R., C. Richardson, E. Pae, M. Montalvo, M. Redmond, M. Zimmer, S. Wagner (2025). Hydrology, rather than wildfire burn extent, determines post-fire organic and black carbon export from mountain rivers in central coastal California [Dataset], HydroShare, https://www.hydroshare.org/resource/421c0226bb38460c8393d67fe0c4f802/
   Organic and Black carbon data: CoastalFires_BiogeochemData.csv
   Discharge data: CoastalFires_DischargeData.csv
   Watershed Metadata: CoastalFires_WatershedData.csv
   
+
+Install Packages
+```{r}
+install.packages("ggplot2")
+install.packages("dplyr")
+install.packages("tidyverse")
+```
 
 Load necessary Libraries
 ```{r}
@@ -20,21 +30,22 @@ library(dplyr)
 library(tidyverse)
 ```
 
-Set Working Directory
+Set Input and Output Directory
 ```{r}
-#Set working directory to folder that contains the following files:
-#From ESS-DIVE: CoastalFires_LevoglucosanData.csv
-#From HydroShare: CoastalFires_BiogeochemData.csv, CoastalFires_DischargeData.csv, CoastalFires_WatershedData.csv
+#Input_Files folder should contains the following files: CoastalFires_LevoglucosanData.csv, CoastalFires_BiogeochemData.csv, CoastalFires_DischargeData.csv, CoastalFires_WatershedData.csv
+input_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/Input_Files" # Change this to match your data frame location. Make sure it ends in "/Input_Files"
 
-setwd("C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/")
+#Output Files folder should contains the following files:
+#From ESS-DIVE: CoastalFires_DataFrameWrangling.Rmd
+output_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/"  # Change this to match your scripts location
 ```
 
 Load datafiles: levoglucosan data, discharge data, watershed and burn severity data, and previously published organic carbon and black carbon data
 ```{r}
-LevoData <- readr::read_csv("CoastalFires_LevoglucosanData.csv")
-BlackCarbonData <- readr::read_csv("CoastalFires_BiogeochemData.csv")
-WatershedData <- readr::read_csv("CoastalFires_WatershedData.csv")
-DischargeData <- readr::read_csv("CoastalFires_DischargeData.csv")
+LevoData <- readr::read_csv(file.path(input_folder, "CoastalFires_LevoglucosanData.csv"))
+BlackCarbonData <- readr::read_csv(file.path(input_folder, "CoastalFires_BiogeochemData.csv"))
+WatershedData <- readr::read_csv(file.path(input_folder, "CoastalFires_WatershedData.csv"))
+DischargeData <- readr::read_csv(file.path(input_folder, "CoastalFires_DischargeData.csv"))
 ``` 
 
 Adjust the black carbon data frame to remove unnecessary information
@@ -56,8 +67,6 @@ Data <- subset(Data, Data$Sample_ID != "SCT-8")
 #add watershed data to table and remove duplicate locations
 Data <- left_join(Data, WatershedData, by = "Watershed")
 CoastalFires_CombinedData <- Data %>% select(-Lat, -Long)
-#print new combined data frame to be used for data analysis
-print(CoastalFires_CombinedData) 
 ```
 
 #Calculate levoclucosan ratios
@@ -65,7 +74,6 @@ print(CoastalFires_CombinedData)
 #calculate the ratio of levoglucosan to bulk DOC and DBC
 CoastalFires_CombinedData$Levo_DOC_percent <- Data$levo_micro_gram_per_liter/1000/Data$DOC_mgC_per_L*100
 CoastalFires_CombinedData$Levo_DBC <- Data$levo_micro_gram_per_liter/1000/Data$DBC_mgC_per_L
-print(CoastalFires_CombinedData)
 ```
 
 #Calculate fluxes and yields
@@ -82,8 +90,6 @@ CoastalFires_CombinedData$flux_DBC <- with(CoastalFires_CombinedData, CoastalFir
 CoastalFires_CombinedData$yield_levo <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$flux_levo / CoastalFires_CombinedData$Area_square_kilometer)
 CoastalFires_CombinedData$yield_DOC <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$flux_DOC / CoastalFires_CombinedData$Area_square_kilometer)
 CoastalFires_CombinedData$yield_DBC <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$flux_DBC / CoastalFires_CombinedData$Area_square_kilometer)
-
-print(CoastalFires_CombinedData)
 ```
 #Calculating a "Time Since Fire" metric
 ```{r}
@@ -93,12 +99,6 @@ CoastalFires_CombinedData$Date <- as.Date(CoastalFires_CombinedData$Date, format
 #Calculating the time since fire for all samples and ensuring it is a numeric value
 fire_date <- as.Date("2020-08-16")
 CoastalFires_CombinedData$time_since_fire_day <- as.numeric(CoastalFires_CombinedData$Date - fire_date)
-print(CoastalFires_CombinedData)
-
-col_names <- colnames(CoastalFires_CombinedData)
-
-# Print column names
-print(col_names)
 ```
 
 Re-arranged columns and change column names
@@ -125,5 +125,7 @@ CoastalFires_CombinedData <- CoastalFires_CombinedData[, desired_order]
 
 Create a csv file of the combined dataset:CoastalFires_CombinedData
 ```{r}
-write.csv(CoastalFires_CombinedData, file = "CoastalFires_CombinedData.csv")
+write.csv(CoastalFires_CombinedData, 
+          file = file.path(output_folder, "CoastalFires_CombinedData.csv"), 
+          row.names = FALSE)  #Prevents writing row numbers
 ```
