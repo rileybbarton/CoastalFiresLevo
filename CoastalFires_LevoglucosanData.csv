@@ -1,4 +1,4 @@
-sample_id,levo_micro_gram_per_liter,std_levo_micro_gram_per_liter
+Sample_ID,levo_micro_gram_per_liter,std_levo_micro_gram_per_liter
 LAG-1,5.558747158,0.102859714
 LAG-10,6.840685924,1.301514709
 LAG-11,4.954502062,1.104197132

@@ -4,44 +4,57 @@ author: "rbb"
 date: "`r Sys.Date()`"
 output: html_document
 ---
+Before starting, find and download necessary files:
+
+Black carbon data from CUAHSI Hydroshare:
+Barton, R., C. Richardson, E. Pae, M. Montalvo, M. Redmond, M. Zimmer, S. Wagner (2025). Hydrology, rather than wildfire burn extent, determines post-fire organic and black carbon export from mountain rivers in central coastal California [Dataset], HydroShare, https://www.hydroshare.org/resource/421c0226bb38460c8393d67fe0c4f802/
+  Organic and Black carbon data: CoastalFires_BiogeochemData.csv
+  Discharge data: CoastalFires_DischargeData.csv
+  Watershed Metadata: CoastalFires_WatershedData.csv
+  
+
 Load necessary Libraries
 ```{r}
-library(fuzzyjoin)
 library(ggplot2)
 library(dplyr)
 library(tidyverse)
-library(here)
 ```
+
 Set Working Directory
 ```{r}
+#Set working directory to folder that contains the following files:
+#From ESS-DIVE: CoastalFires_LevoglucosanData.csv
+#From HydroShare: CoastalFires_BiogeochemData.csv, CoastalFires_DischargeData.csv, CoastalFires_WatershedData.csv
+
 setwd("C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/")
 ```
 
 Load datafiles: levoglucosan data, discharge data, watershed and burn severity data, and previously published organic carbon and black carbon data
 ```{r}
 LevoData <- readr::read_csv("CoastalFires_LevoglucosanData.csv")
-BlackCarbonData <- readr::read_csv("CoastalFires_BlackCarbonData.csv")
+BlackCarbonData <- readr::read_csv("CoastalFires_BiogeochemData.csv")
 WatershedData <- readr::read_csv("CoastalFires_WatershedData.csv")
 DischargeData <- readr::read_csv("CoastalFires_DischargeData.csv")
 ``` 
 
-Adjust the PublishedData data frame to remove unnecessary information
+Adjust the black carbon data frame to remove unnecessary information
 ```{r}
 #adjust the published data frame
-#remove excess columns and print
-BlackCarbonData <- BlackCarbonData %>% select(-TSS_mg_per_L, -POC_mgC_per_L, -PBC_mgC_per_L, -PBC_TSS_perc, -PBC_POC_perc, -pB6CA_nM,-pB5CA_nM, -pB6CA_B5CA)
-print(BlackCarbonData)
+#remove excess columns and print. The columns that are being removed are associated with the particulate phase (i.e., particulate organic carbon and particulate black carbon). As levoglucosan concentrations were determined only for the dissolved phase, the following data analysis will also only focus on the dissolved phase. 
+BlackCarbonData <- BlackCarbonData %>%
+  select(-TSS_mg_per_L, -POC_mgC_per_L, -`PBC_mgC_per_L`, -PBC_TSS_percent, 
+         -PBC_POC_percent, -pB6CA_nano_mol_per_L, -pB5CA_nano_mol_per_L, -pB6CA_B5CA)
 ```
 
-Combine LevoData, WatershedData, and PublishedData Data Frames to one centralized dataframe: CoastalFires_CombinedData
+Combine LevoData, WatershedData, and BlackCarbonData Data Frames to one centralized dataframe: CoastalFires_CombinedData
 ```{r}
 #combine data frames
-Data <- left_join(LevoData, BlackCarbonData, by = "sample_id")
+Data <- left_join(LevoData, BlackCarbonData, by = "Sample_ID")
 #exclude samples taken at lagoon dowstream of Scott sampling site
-Data <- subset(Data, Data$sample_id != "SCT-7")
-Data <- subset(Data, Data$sample_id != "SCT-8")
+Data <- subset(Data, Data$Sample_ID != "SCT-7")
+Data <- subset(Data, Data$Sample_ID != "SCT-8")
 #add watershed data to table and remove duplicate locations
-Data <- left_join(Data, WatershedData, by = "watershed")
+Data <- left_join(Data, WatershedData, by = "Watershed")
 CoastalFires_CombinedData <- Data %>% select(-Lat, -Long)
 #print new combined data frame to be used for data analysis
 print(CoastalFires_CombinedData) 
@@ -50,7 +63,7 @@ print(CoastalFires_CombinedData)
 #Calculate levoclucosan ratios
 ```{r}
 #calculate the ratio of levoglucosan to bulk DOC and DBC
-CoastalFires_CombinedData$Levo_DOC_perc <- Data$levo_micro_gram_per_liter/1000/Data$DOC_mgC_per_L*100
+CoastalFires_CombinedData$Levo_DOC_percent <- Data$levo_micro_gram_per_liter/1000/Data$DOC_mgC_per_L*100
 CoastalFires_CombinedData$Levo_DBC <- Data$levo_micro_gram_per_liter/1000/Data$DBC_mgC_per_L
 print(CoastalFires_CombinedData)
 ```
@@ -58,12 +71,12 @@ print(CoastalFires_CombinedData)
 #Calculate fluxes and yields
 ```{r}
 #discharge normalized levoglucosan concentrations
-CoastalFires_CombinedData$Q_norm_levo <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$levo_micro_gram_per_liter / CoastalFires_CombinedData$Q_m_sq_per_sec)
+CoastalFires_CombinedData$Q_norm_levo <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$levo_micro_gram_per_liter / CoastalFires_CombinedData$Discharge_cms)
 
 #flux
-CoastalFires_CombinedData$flux_levo <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$levo_micro_gram_per_liter * CoastalFires_CombinedData$Q_m_sq_per_sec)
-CoastalFires_CombinedData$flux_DOC <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$DOC_mgC_per_L * CoastalFires_CombinedData$Q_m_sq_per_sec)
-CoastalFires_CombinedData$flux_DBC <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$DBC_mgC_per_L * CoastalFires_CombinedData$Q_m_sq_per_sec)
+CoastalFires_CombinedData$flux_levo <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$levo_micro_gram_per_liter * CoastalFires_CombinedData$Discharge_cms)
+CoastalFires_CombinedData$flux_DOC <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$DOC_mgC_per_L * CoastalFires_CombinedData$Discharge_cms)
+CoastalFires_CombinedData$flux_DBC <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$DBC_mgC_per_L * CoastalFires_CombinedData$Discharge_cms)
 
 #yield
 CoastalFires_CombinedData$yield_levo <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$flux_levo / CoastalFires_CombinedData$Area_square_kilometer)
@@ -75,22 +88,27 @@ print(CoastalFires_CombinedData)
 #Calculating a "Time Since Fire" metric
 ```{r}
 #Ensuring that the Date column is correctly classified as a date rather than a character
-CoastalFires_CombinedData$date <- as.Date(CoastalFires_CombinedData$date, format = "%d-%b-%y")
+CoastalFires_CombinedData$Date <- as.Date(CoastalFires_CombinedData$Date, format = "%d-%b-%y")
 
 #Calculating the time since fire for all samples and ensuring it is a numeric value
 fire_date <- as.Date("2020-08-16")
-CoastalFires_CombinedData$time_since_fire_day <- as.numeric(CoastalFires_CombinedData$date - fire_date)
+CoastalFires_CombinedData$time_since_fire_day <- as.numeric(CoastalFires_CombinedData$Date - fire_date)
 print(CoastalFires_CombinedData)
+
+col_names <- colnames(CoastalFires_CombinedData)
+
+# Print column names
+print(col_names)
 ```
 
 Re-arranged columns and change column names
 ```{r}
 # Specify the desired column order
-desired_order <- c("sample_id", "watershed", "date", "time","time_since_fire_day", "lat", "long", 
-                   "Q_m_sq_per_sec", "flow_cat", "lagoon", "DOC_mgC_per_L", 
+desired_order <- c("Sample_ID", "IGSN", "Watershed", "Date", "Time","time_since_fire_day", "Latitude", "Longitude", "Location_Change",
+                   "Discharge_cms", "Flow_category", "DOC_mgC_per_L", 
                    "levo_micro_gram_per_liter", "std_levo_micro_gram_per_liter", 
-                   "DBC_mgC_per_L", "DBC_DOC_perc", "dB6CA_nM", "dB5CA_nM", 
-                   "dB6CA_B5CA", "Levo_DOC_perc", "Levo_DBC", "Q_norm_levo", "flux_levo", 
+                   "DBC_mgC_per_L", "DBC_DOC_percent", "dB6CA_nano_mol_per_L", "dB5CA_nano_mol_per_L", 
+                   "dB6CA_B5CA", "Levo_DOC_percent", "Levo_DBC", "Q_norm_levo", "flux_levo", 
                    "flux_DOC", "flux_DBC", "yield_levo", "yield_DOC", 
                    "yield_DBC", "a254_per_m", "SUVA254_L_per_mgC_per_m", 
                    "Area_square_kilometer", "Average_slope_percent", 
