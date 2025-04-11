@@ -4,12 +4,14 @@ author: "RB"
 date: "2024-09-13"
 output: html_document
 ---
-Install Necessary Packages
+To utilize this script it is necessary to have run "CosatalFires_DataFrameWrangling.Rmd" ending with the creation of "CoastalFires_CombinedData.csv". If you have not completed this, please do so before continuing. 
+
+Here, DESCRIBE WHAT THIS IS. 
+
+Install necessary packages
 ```{r}
 install.packages("ggrepel")
 install.packages("vegan")
-install.packages("ggplot2")
-install.packages("dplyr")
 install.packages("tidyverse")
 ```
 
@@ -17,8 +19,6 @@ Load necessary libraries
 ```{r}
 library(ggrepel)
 library(vegan)
-library(ggplot2)
-library(dplyr)
 library(tidyverse)
 ```
 
@@ -29,11 +29,45 @@ input_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/Input_Fil
 
 #Output Files folder should contains the following files:
 #From ESS-DIVE: CoastalFires_DataAnalysis.Rmd
-output_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/"  # Change this to match your scripts location
+working_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/"  # Change this to match your scripts location
 
-CombinedData <- readr::read_csv(file.path(output_folder,"CoastalFires_CombinedData.csv"))
+CombinedData <- readr::read_csv(file.path(working_folder,"CoastalFires_CombinedData.csv"))
 DischargeData <- readr::read_csv(file.path(input_folder, "CoastalFires_DischargeData.csv"))
 ``` 
+
+#Unit Conversions: converting units to molar-C in order to better compare between levoglucosan and black cabron
+```{r}
+#dissolved black carbon and dissolved organic carbon are in micro grams of carbon per liter. To get both values into micro moles of carbon per liter, divide by number of C atoms in molecule to convert units into mM-C. Then multiply by 1000 to convert from mM-C to uM-C.
+CombinedData$DOC_micro_mol_C_per_L <- CombinedData$DOC_mgC_per_L / 12 * 1000
+CombinedData$DBC_micro_mol_C_per_L <- CombinedData$DBC_mgC_per_L / 12 * 1000
+
+#individual BPCAs are in micro moles per liter. Multiply by number of C atoms in molecule to convert units to nM-C.Then divide by 1000 to convert from nM-C to uM-C.
+CombinedData$B6CA_micro_mol_C_per_L <- CombinedData$dB6CA_nano_mol_per_L * 12 / 1000 
+CombinedData$B5CA_micro_mol_C_per_L <- CombinedData$dB5CA_nano_mol_per_L * 11 / 1000 
+
+#Levoglucosan is in micro moles per liter. Divide by molecular weight of levoglucosan to get units into uM-levoglucosan. Then multiply by number of C atoms in molecule to convert units to uM-C.
+CombinedData$Levo_micro_mol_C_per_L <- CombinedData$levo_micro_gram_per_liter / 162.14 * 6
+```
+
+#Calculate levoclucosan-dissolved organic carbon and [B6CA+B5CA]-dissolved organic carbon ratios
+```{r}
+#Add a new column that calculates the concentration of both B6CA and B5CA molecular markers. To avoid bias (due to conversion factors associated with calculating black carbon concentrations with BPCAs) when comparing black carbon and levoglucosan, we use the combined concentration of B6CA and B5CA. 
+CombinedData$B6CA_and_B5CA_micro_mol_per_L <- CombinedData$B6CA_micro_mol_C_per_L + CombinedData$B5CA_micro_mol_C_per_L
+
+#calculate the ratio of levoglucosan to bulk DOC and DBC
+CombinedData$Levo_DOC_percent <- CombinedData$Levo_micro_mol_C_per_L / CombinedData$DOC_micro_mol_C_per_L * 100
+CombinedData$BPCA_DOC_percent <- CombinedData$B6CA_and_B5CA_micro_mol_per_L / CombinedData$DOC_mgC_per_L * 100
+```
+
+#Calculating a "Time Since Fire" metric
+```{r}
+#Ensuring that the Date column is correctly classified as a date rather than a character
+CombinedData$Date <- as.Date(CombinedData$Date, format = "%d-%b-%y")
+
+#Calculating the time since fire for all samples and ensuring it is a numeric value
+fire_date <- as.Date("2020-08-16")
+CombinedData$time_since_fire_day <- as.numeric(CombinedData$Date - fire_date)
+```
 
 Test data for normality using Shapiro-Wilk Test
 ```{r}
@@ -416,4 +450,20 @@ ggplot(nmds_scores, aes(x = NMDS1, y = NMDS2)) +
 
 #Determine which vectors are statistically significant
 envfit_result
+```
+
+#Calculate fluxes and yields
+```{r}
+#discharge normalized levoglucosan concentrations
+CoastalFires_CombinedData$Q_norm_levo <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$levo_micro_gram_per_liter / CoastalFires_CombinedData$Discharge_cms)
+
+#flux
+CoastalFires_CombinedData$flux_levo <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$levo_micro_gram_per_liter * CoastalFires_CombinedData$Discharge_cms)
+CoastalFires_CombinedData$flux_DOC <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$DOC_mgC_per_L * CoastalFires_CombinedData$Discharge_cms)
+CoastalFires_CombinedData$flux_DBC <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$DBC_mgC_per_L * CoastalFires_CombinedData$Discharge_cms)
+
+#yield
+CoastalFires_CombinedData$yield_levo <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$flux_levo / CoastalFires_CombinedData$Area_square_kilometer)
+CoastalFires_CombinedData$yield_DOC <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$flux_DOC / CoastalFires_CombinedData$Area_square_kilometer)
+CoastalFires_CombinedData$yield_DBC <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$flux_DBC / CoastalFires_CombinedData$Area_square_kilometer)
 ```

@@ -16,101 +16,64 @@ Barton, R., C. Richardson, E. Pae, M. Montalvo, M. Redmond, M. Zimmer, S. Wagner
   Watershed Metadata: CoastalFires_WatershedData.csv
   
 
-Install Packages
+Install package if necessary
 ```{r}
-install.packages("ggplot2")
-install.packages("dplyr")
 install.packages("tidyverse")
 ```
 
-Load necessary Libraries
+Load library
 ```{r}
-library(ggplot2)
-library(dplyr)
 library(tidyverse)
 ```
 
-Set Input and Output Directory
+Set directory for input files and working directory
 ```{r}
 #Input_Files folder should contains the following files: CoastalFires_LevoglucosanData.csv, CoastalFires_BiogeochemData.csv, CoastalFires_DischargeData.csv, CoastalFires_WatershedData.csv
-input_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/Input_Files" # Change this to match your data frame location. Make sure it ends in "/Input_Files"
+input_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/Input_Files" # Change this to match your directory. Make sure it ends in "/Input_Files"
 
-#Output Files folder should contains the following files:
-#From ESS-DIVE: CoastalFires_DataFrameWrangling.Rmd
-output_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/"  # Change this to match your scripts location
+#working folder should contain: ReadMe.txt, CoastalFires_DataFrameWrangling.Rmd, and CoastalFires_DataAnalysis.Rmd
+working_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/"  # Change this to match your directory.
 ```
 
-Load datafiles: levoglucosan data, discharge data, watershed and burn severity data, and previously published organic carbon and black carbon data
+Load datafiles from Input_Files folder: levoglucosan data, discharge data, watershed and burn severity data, and previously published organic carbon and black carbon data
 ```{r}
+#From ESS-DIVE
 LevoData <- readr::read_csv(file.path(input_folder, "CoastalFires_LevoglucosanData.csv"))
+
+#From CUAHSI Hydroshare
 BlackCarbonData <- readr::read_csv(file.path(input_folder, "CoastalFires_BiogeochemData.csv"))
 WatershedData <- readr::read_csv(file.path(input_folder, "CoastalFires_WatershedData.csv"))
 DischargeData <- readr::read_csv(file.path(input_folder, "CoastalFires_DischargeData.csv"))
 ``` 
 
-Adjust the black carbon data frame to remove unnecessary information
+Combine LevoData, WatershedData, and BlackCarbonData data frames to one centralized dataframe: CombinedData
 ```{r}
-#adjust the published data frame
-#remove excess columns and print. The columns that are being removed are associated with the particulate phase (i.e., particulate organic carbon and particulate black carbon). As levoglucosan concentrations were determined only for the dissolved phase, the following data analysis will also only focus on the dissolved phase. 
+#combine data frames
+CombinedData <- left_join(LevoData, BlackCarbonData, by = "Sample_ID")
+
+#add watershed metadata and remove duplicated columns
+CombinedData <- left_join(CombinedData, WatershedData, by = "Watershed")
+CombinedData <- CombinedData %>% select(-Lat, -Long) #delete extra location columns
+```
+
+Adjust the black carbon data frame to remove unnecessary columns
+```{r}
+#Adjust the published data frame to make it more applicable to current study. 
+
+#Remove unnecessary columns. The columns that are being removed are associated with the particulate phase (i.e., particulate organic carbon and particulate black carbon). As levoglucosan concentrations were determined only for the dissolved phase, the following data analysis will also only focus on the dissolved phase. 
 BlackCarbonData <- BlackCarbonData %>%
   select(-TSS_mg_per_L, -POC_mgC_per_L, -`PBC_mgC_per_L`, -PBC_TSS_percent, 
          -PBC_POC_percent, -pB6CA_nano_mol_per_L, -pB5CA_nano_mol_per_L, -pB6CA_B5CA)
 ```
 
-Combine LevoData, WatershedData, and BlackCarbonData Data Frames to one centralized dataframe: CoastalFires_CombinedData
-```{r}
-#combine data frames
-Data <- left_join(LevoData, BlackCarbonData, by = "Sample_ID")
-#exclude samples taken at lagoon dowstream of Scott sampling site
-Data <- subset(Data, Data$Sample_ID != "SCT-7")
-Data <- subset(Data, Data$Sample_ID != "SCT-8")
-#add watershed data to table and remove duplicate locations
-Data <- left_join(Data, WatershedData, by = "Watershed")
-CoastalFires_CombinedData <- Data %>% select(-Lat, -Long)
-```
-
-#Calculate levoclucosan ratios
-```{r}
-#calculate the ratio of levoglucosan to bulk DOC and DBC
-CoastalFires_CombinedData$Levo_DOC_percent <- Data$levo_micro_gram_per_liter/1000/Data$DOC_mgC_per_L*100
-CoastalFires_CombinedData$Levo_DBC <- Data$levo_micro_gram_per_liter/1000/Data$DBC_mgC_per_L
-```
-
-#Calculate fluxes and yields
-```{r}
-#discharge normalized levoglucosan concentrations
-CoastalFires_CombinedData$Q_norm_levo <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$levo_micro_gram_per_liter / CoastalFires_CombinedData$Discharge_cms)
-
-#flux
-CoastalFires_CombinedData$flux_levo <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$levo_micro_gram_per_liter * CoastalFires_CombinedData$Discharge_cms)
-CoastalFires_CombinedData$flux_DOC <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$DOC_mgC_per_L * CoastalFires_CombinedData$Discharge_cms)
-CoastalFires_CombinedData$flux_DBC <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$DBC_mgC_per_L * CoastalFires_CombinedData$Discharge_cms)
-
-#yield
-CoastalFires_CombinedData$yield_levo <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$flux_levo / CoastalFires_CombinedData$Area_square_kilometer)
-CoastalFires_CombinedData$yield_DOC <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$flux_DOC / CoastalFires_CombinedData$Area_square_kilometer)
-CoastalFires_CombinedData$yield_DBC <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$flux_DBC / CoastalFires_CombinedData$Area_square_kilometer)
-```
-#Calculating a "Time Since Fire" metric
-```{r}
-#Ensuring that the Date column is correctly classified as a date rather than a character
-CoastalFires_CombinedData$Date <- as.Date(CoastalFires_CombinedData$Date, format = "%d-%b-%y")
-
-#Calculating the time since fire for all samples and ensuring it is a numeric value
-fire_date <- as.Date("2020-08-16")
-CoastalFires_CombinedData$time_since_fire_day <- as.numeric(CoastalFires_CombinedData$Date - fire_date)
-```
-
 Re-arranged columns and change column names
 ```{r}
 # Specify the desired column order
-desired_order <- c("Sample_ID", "IGSN", "Watershed", "Date", "Time","time_since_fire_day", "Latitude", "Longitude", "Location_Change",
+desired_order <- c("Sample_ID", "Watershed", "Date", "Time", "Latitude", "Longitude", "Location_Change",
                    "Discharge_cms", "Flow_category", "DOC_mgC_per_L", 
                    "levo_micro_gram_per_liter", "std_levo_micro_gram_per_liter", 
                    "DBC_mgC_per_L", "DBC_DOC_percent", "dB6CA_nano_mol_per_L", "dB5CA_nano_mol_per_L", 
-                   "dB6CA_B5CA", "Levo_DOC_percent", "Levo_DBC", "Q_norm_levo", "flux_levo", 
-                   "flux_DOC", "flux_DBC", "yield_levo", "yield_DOC", 
-                   "yield_DBC", "a254_per_m", "SUVA254_L_per_mgC_per_m", 
+                   "dB6CA_B5CA", "a254_per_m", "SUVA254_L_per_mgC_per_m", 
                    "Area_square_kilometer", "Average_slope_percent", 
                    "Average_precipitation_milli_meter", "Burn_Extent_percent", 
                    "Area_low_severity_percent", "Area_low_to_mod_severity_percent", 
@@ -120,12 +83,12 @@ desired_order <- c("Sample_ID", "IGSN", "Watershed", "Date", "Time","time_since_
                    "Suficial_Sediments_percent", "Schist_percent")
 
 # Rearrange the columns
-CoastalFires_CombinedData <- CoastalFires_CombinedData[, desired_order]
+CombinedData <- CombinedData[, desired_order]
 ```
 
 Create a csv file of the combined dataset:CoastalFires_CombinedData
 ```{r}
-write.csv(CoastalFires_CombinedData, 
-          file = file.path(output_folder, "CoastalFires_CombinedData.csv"), 
+write.csv(CombinedData, 
+          file = file.path(working_folder, "CoastalFires_CombinedData.csv"), 
           row.names = FALSE)  #Prevents writing row numbers
 ```
