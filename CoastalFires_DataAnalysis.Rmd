@@ -1,15 +1,17 @@
 ---
-title: "Coastal Fires Levoglucosan"
-author: "RB"
-date: "2024-09-13"
+title: "Coastal_Fires_DataAnalysis"
+author: "RB and AC"
+date: "2025-04-13"
 output: html_document
 ---
 To utilize this script it is necessary to have run "CosatalFires_DataFrameWrangling.Rmd" ending with the creation of "CoastalFires_CombinedData.csv". If you have not completed this, please do so before continuing. 
 
-Here, DESCRIBE WHAT THIS IS. 
+Here, this script is utilized for data analysis and preliminary figure creation.
 
 Install necessary packages
 ```{r}
+install.packages("gt")
+install.packages("Cairo")
 install.packages("ggrepel")
 install.packages("vegan")
 install.packages("tidyverse")
@@ -17,6 +19,8 @@ install.packages("tidyverse")
 
 Load necessary libraries
 ```{r}
+library(gt)
+library(Cairo)
 library(ggrepel)
 library(vegan)
 library(tidyverse)
@@ -24,52 +28,59 @@ library(tidyverse)
 
 Set Input and Output Directory, load data files, and rename them
 ```{r}
-#Input_Files folder should contains the following files: CoastalFires_DischargeData.csv
-input_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/Input_Files" # Change this to match your data frame location. Make sure it ends in "/Input_Files"
+#Input folder should contains the following files: CoastalFires_DischargeData.csv
+input_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/Input" # Change this to match your data frame location. Make sure it ends in "/Input"
 
-#Output Files folder should contains the following files:
+#Working folder should contains the following files:
 #From ESS-DIVE: CoastalFires_DataAnalysis.Rmd
 working_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/"  # Change this to match your scripts location
 
-CombinedData <- readr::read_csv(file.path(working_folder,"CoastalFires_CombinedData.csv"))
-DischargeData <- readr::read_csv(file.path(input_folder, "CoastalFires_DischargeData.csv"))
+#out put folder should contain a csv created with the DataFrameWrangling script: "CoastalFires_CombinedData.csv" 
+output_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/Output" #Change this to match your directory
+
+CombinedData <- readr::read_csv(file.path(output_folder,"CoastalFires_CombinedData.csv"))
 ``` 
-
-#Unit Conversions: converting units to molar-C in order to better compare between levoglucosan and black cabron
+Exclude samples that were taken at a different location. 
 ```{r}
-#dissolved black carbon and dissolved organic carbon are in micro grams of carbon per liter. To get both values into micro moles of carbon per liter, divide by number of C atoms in molecule to convert units into mM-C. Then multiply by 1000 to convert from mM-C to uM-C.
-CombinedData$DOC_micro_mol_C_per_L <- CombinedData$DOC_mgC_per_L / 12 * 1000
-CombinedData$DBC_micro_mol_C_per_L <- CombinedData$DBC_mgC_per_L / 12 * 1000
-
-#individual BPCAs are in micro moles per liter. Multiply by number of C atoms in molecule to convert units to nM-C.Then divide by 1000 to convert from nM-C to uM-C.
-CombinedData$B6CA_micro_mol_C_per_L <- CombinedData$dB6CA_nano_mol_per_L * 12 / 1000 
-CombinedData$B5CA_micro_mol_C_per_L <- CombinedData$dB5CA_nano_mol_per_L * 11 / 1000 
-
-#Levoglucosan is in micro moles per liter. Divide by molecular weight of levoglucosan to get units into uM-levoglucosan. Then multiply by number of C atoms in molecule to convert units to uM-C.
-CombinedData$Levo_micro_mol_C_per_L <- CombinedData$levo_micro_gram_per_liter / 162.14 * 6
+#Scott Creek flooded during the events of January 27-28th, 2021. Samples were collected at a downstream lagoon site. However, due to this the data collected does not accurately reflect that at the sample site. As such authors of the associated manuscript have excluded it from all data analysis and figure creation.
+CombinedData <- CombinedData %>%
+  filter(Location_Change != "Y")
 ```
 
-#Calculate levoclucosan-dissolved organic carbon and [B6CA+B5CA]-dissolved organic carbon ratios
+#Calculating a "discharge-normalized" levoglucosan concentration
 ```{r}
-#Add a new column that calculates the concentration of both B6CA and B5CA molecular markers. To avoid bias (due to conversion factors associated with calculating black carbon concentrations with BPCAs) when comparing black carbon and levoglucosan, we use the combined concentration of B6CA and B5CA. 
-CombinedData$B6CA_and_B5CA_micro_mol_per_L <- CombinedData$B6CA_micro_mol_C_per_L + CombinedData$B5CA_micro_mol_C_per_L
-
-#calculate the ratio of levoglucosan to bulk DOC and DBC
-CombinedData$Levo_DOC_percent <- CombinedData$Levo_micro_mol_C_per_L / CombinedData$DOC_micro_mol_C_per_L * 100
-CombinedData$BPCA_DOC_percent <- CombinedData$B6CA_and_B5CA_micro_mol_per_L / CombinedData$DOC_mgC_per_L * 100
+CombinedData$Q_norm_levo <- CombinedData$Levo_micro_mol_C_per_L / CombinedData$Discharge_cms #units are in uM-C s per m^(-3)
 ```
 
-#Calculating a "Time Since Fire" metric
+Range, Average, Median
 ```{r}
-#Ensuring that the Date column is correctly classified as a date rather than a character
-CombinedData$Date <- as.Date(CombinedData$Date, format = "%d-%b-%y")
+# List of variables to summarize
+vars_to_summarize <- c("DOC_micro_mol_C_per_L", "Levo_micro_mol_C_per_L", "B6CA_and_B5CA_micro_mol_C_per_L", 
+                       "Levo_DOC_percent", "BPCA_DOC_percent", "SUVA254_L_per_mgC_per_m", "a254_per_m")
 
-#Calculating the time since fire for all samples and ensuring it is a numeric value
-fire_date <- as.Date("2020-08-16")
-CombinedData$time_since_fire_day <- as.numeric(CombinedData$Date - fire_date)
+# Function to calculate summary stats for one variable
+summary_stats <- function(var) {
+  x <- CombinedData[[var]]
+  x <- x[!is.na(x)]  # remove NAs
+  data.frame(
+    Variable = var,
+    Min = min(x),
+    Max = max(x),
+    Mean = mean(x),
+    SD = sd(x),
+    Median = median(x)
+  )
+}
+
+# Apply function to all variables
+summary_table <- do.call(rbind, lapply(vars_to_summarize, summary_stats))
+
+# View the summary
+print(summary_table)
+
 ```
 
-Test data for normality using Shapiro-Wilk Test
+#Shapiro-Wilk: Test data for normality
 ```{r}
 #are all variables normally distributed?
 #filter to only numeric data
@@ -92,227 +103,222 @@ rownames(shapiro_df) <- NULL
 print(shapiro_df)
 ```
 
-The differences of concentrations and key ratios by watershed
+#Kruskal Wallis: Test for differences between watersheds
 ```{r}
-#is the concentration of levoglucosan different across watersheds?
-kruskal_test_levo <- kruskal.test(levo_micro_gram_per_liter ~ Watershed, data = CombinedData)
-print(kruskal_test_levo)
-kruskal_test_Qnorm_levo <- kruskal.test(Q_norm_levo ~ Watershed, data = CombinedData)
-print(kruskal_test_Qnorm_levo)
-#is the ratio of levoglucosan to bulk DOC different across watersheds?
-kruskal_test_levotoDOC <- kruskal.test(Levo_DOC_percent ~ Watershed, data = CombinedData)
-print(kruskal_test_levotoDOC)
-#is the ratio of levoglucosan to DBC different across watersheds?
-kruskal_test_levotoDBC <- kruskal.test(Levo_DBC ~ Watershed, data = CombinedData)
-print(kruskal_test_levotoDBC)
+# Ensure Watershed is a factor
+CombinedData$Watershed <- as.factor(CombinedData$Watershed)
+
+# Filter to numeric data (excluding lat/long again)
+numeric_columns <- sapply(CombinedData, is.numeric)
+Data_numeric <- CombinedData[, numeric_columns]
+Data_numeric <- Data_numeric %>% select(-Latitude, -Longitude)
+
+# Run Kruskal-Wallis test for each numeric variable by Watershed
+kruskal_results <- sapply(names(Data_numeric), function(var) {
+  formula <- as.formula(paste(var, "~ Watershed"))
+  test <- kruskal.test(formula, data = CombinedData)
+  return(c(p_value = test$p.value, chi_squared = test$statistic))
+})
+
+# Convert to readable data frame
+kruskal_df <- as.data.frame(t(kruskal_results))
+kruskal_df$Variable <- rownames(kruskal_df)
+rownames(kruskal_df) <- NULL
+
+# Print the results
+print(kruskal_df)
 ```
 
-Is a significant difference between watersheds for Q-norm levoglucosan?
+#Wilcoxon: Which watersheds have significantly different concentrations?
 ```{r}
-#Q_norm_levo is the concentration of levoglucosan divided by discharge
-wilcoxon_test_Qnorm_levo <- pairwise.wilcox.test(CombinedData$Q_norm_levo, CombinedData$Watershed, p.adjust.method = "bonferroni")
-print(wilcoxon_test_Qnorm_levo)
+#According to the above Kruskal Wallis tests, the following variables are significantly different between watersheds: Q_norm_levo, BPCA_DOC_percent, and dB6CA_B5CA
+# Make sure Watershed is a factor
+CombinedData$Watershed <- as.factor(CombinedData$Watershed)
+
+# Variables to test
+vars_to_test <- c("Q_norm_levo", "BPCA_DOC_percent", "dB6CA_B5CA")
+
+# Get all unique pairwise combinations of watersheds
+watershed_pairs <- combn(levels(CombinedData$Watershed), 2, simplify = FALSE)
+
+# Initialize an empty list to store results
+wilcox_results <- list()
+
+# Loop through each variable and watershed pair
+for (var in vars_to_test) {
+  for (pair in watershed_pairs) {
+    
+    # Extract and unlist group data
+    group1 <- CombinedData[CombinedData$Watershed == pair[1], var]
+    group2 <- CombinedData[CombinedData$Watershed == pair[2], var]
+    
+    # Unlist and convert to numeric, removing NA values
+    group1 <- as.numeric(unlist(group1))
+    group2 <- as.numeric(unlist(group2))
+    
+    group1 <- group1[!is.na(group1)]
+    group2 <- group2[!is.na(group2)]
+    
+    # Only test if both groups have data
+    if (length(group1) > 0 & length(group2) > 0) {
+      test <- wilcox.test(group1, group2)
+      
+      wilcox_results[[length(wilcox_results) + 1]] <- data.frame(
+        Variable = var,
+        Watershed_1 = pair[1],
+        Watershed_2 = pair[2],
+        p_value = test$p.value,
+        W_statistic = test$statistic
+      )
+    }
+  }
+}
+
+# Combine results into a single data frame
+wilcox_df <- do.call(rbind, wilcox_results)
+
+# Print
+print(wilcox_df)
 ```
 
-Time since fire - Spearman's rank
+Spearman's Rank: Time since fire
 ```{r}
-#make a table to showcase the coefficients and p-values
-# Perform Spearman's rank correlation using the averaged data
-spearman_corr_levo_ppb <- cor.test(CombinedData$time_since_fire_day, CombinedData$levo_micro_gram_per_liter, method = "spearman", use = "pairwise.complete.obs")
+# Variables to test against time_since_fire
+vars_to_test_time_since_fire <- c("DOC_micro_mol_C_per_L", "Levo_micro_mol_C_per_L", "B6CA_and_B5CA_micro_mol_C_per_L", "Levo_DOC_percent", "BPCA_DOC_percent", "Q_norm_levo", "SUVA254_L_per_mgC_per_m", "a254_per_m")
 
-spearman_corr_Qnorm_levo <- cor.test(CombinedData$time_since_fire_day, CombinedData$Q_norm_levo, method = "spearman", use = "pairwise.complete.obs")
+# Initialize a list to store results
+spearman_results_time_since_fire <- lapply(vars_to_test_time_since_fire, function(var) {
+  
+  # Extract x and y, remove rows with NA
+  df <- CombinedData[, c("time_since_fire_day", var)]
+  df <- na.omit(df)
+  
+  # Run Spearman correlation test
+  test <- cor.test(df$time_since_fire_day, df[[var]], method = "spearman")
+  
+  # Return results as a row in a data frame
+  data.frame(
+    Variable = var,
+    Spearman_rho = test$estimate,
+    p_value = test$p.value,
+    stringsAsFactors = FALSE
+  )
+})
 
-spearman_corr_levoDOC <- cor.test(CombinedData$time_since_fire_day, CombinedData$Levo_DOC_percent, method = "spearman", use = "pairwise.complete.obs")
+# Combine into a single data frame
+spearman_df_time_since_fire <- do.call(rbind, spearman_results_time_since_fire)
 
-spearman_corr_DBC_ppm <- cor.test(CombinedData$time_since_fire_day, CombinedData$DBC_mgC_per_L, method = "spearman", use = "pairwise.complete.obs")
-
-spearman_corr_dbcDOC <- cor.test(CombinedData$time_since_fire_day, CombinedData$DBC_DOC_percent, method = "spearman", use = "pairwise.complete.obs")
-
-# Extract p-values and rho values
-results <- data.frame(
-  Comparison = c("time_since_fire_day vs levo_ppb",
-                  "time_since_fire_day vs Qnorm_levo",
-                 "time_since_fire_day vs levoDOC",
-                  "time_since_fire_day vs DBC",
-                  "time_since_fire_day vs dbcDOC"),
-  Rho = c(spearman_corr_levo_ppb$estimate,
-          spearman_corr_Qnorm_levo$estimate,
-          spearman_corr_levoDOC$estimate,
-          spearman_corr_DBC_ppm$estimate,
-          spearman_corr_dbcDOC$estimate),
-  P_Value = c(spearman_corr_levo_ppb$p.value,
-              spearman_corr_Qnorm_levo$p.value,
-              spearman_corr_levoDOC$p.value,
-              spearman_corr_DBC_ppm$p.value,
-              spearman_corr_dbcDOC$p.value)
-)
-
-# Print the results table
-print(results)
+# Print results
+print(spearman_df_time_since_fire)
 ```
 
-Miscellaneous Correlation Significant Tests for Levoglucosan Concentrations
-``` {r}
-#by burn extent
-spearman_corr_BE <- cor.test(CombinedData$Burn_Extent_percent, CombinedData$levo_micro_gram_per_liter, method = "spearman", use = "pairwise.complete.obs")
-#by low severity burn extent
-spearman_corr_BElow <- cor.test(CombinedData$Area_low_severity_percent, CombinedData$levo_micro_gram_per_liter, method = "spearman", use = "pairwise.complete.obs")
-#by low to moderate severity burn extent
-spearman_corr_BElowtomod <- cor.test(CombinedData$Area_low_to_mod_severity_percent, CombinedData$levo_micro_gram_per_liter, method = "spearman", use = "pairwise.complete.obs")
-#by moderate to high severity burn extent
-spearman_corr_BEmodtohigh <- cor.test(CombinedData$Area_mod_to_high_severity_percent, CombinedData$levo_micro_gram_per_liter, method = "spearman", use = "pairwise.complete.obs")
-#by watershed area
-spearman_corr_area <- cor.test(CombinedData$Area_square_kilometer, CombinedData$levo_micro_gram_per_liter, method = "spearman", use = "pairwise.complete.obs")
-#by watershed slope
-spearman_corr_slope <- cor.test(CombinedData$Average_slope_percent, CombinedData$levo_micro_gram_per_liter, method = "spearman", use = "pairwise.complete.obs")
-#by discharge
-spearman_corr_Q <- cor.test(CombinedData$Discharge_cms, CombinedData$levo_micro_gram_per_liter, method = "spearman", use = "pairwise.complete.obs")
+Spearman's Rank: Discharge
+```{r}
+# Variables to test against discharge
+vars_to_test_Q <- c("DOC_micro_mol_C_per_L", "Levo_micro_mol_C_per_L", "B6CA_and_B5CA_micro_mol_C_per_L", "Levo_DOC_percent", "BPCA_DOC_percent", "SUVA254_L_per_mgC_per_m", "a254_per_m")
 
-# Extract p-values and rho values
-results <- data.frame(
-  Comparison = c("levo_ppb vs burn_extent",
-                  "levo_ppb vs low burn_extent",
-                  "levo_ppb vs low-mod burn_extent",
-                 "levo_ppb vs mod-high burn extent", 
-                 "levo_ppb vs watershed area", 
-                 "levo_ppb vs watershed slope",
-                 "levo_ppb vs discharge"),
-  Rho = c(spearman_corr_BE$estimate,
-          spearman_corr_BElow$estimate,
-          spearman_corr_BElowtomod$estimate,
-          spearman_corr_BEmodtohigh$estimate,
-          spearman_corr_area$estimate,
-          spearman_corr_slope$estimate,
-          spearman_corr_Q$estimate),
-  P_Value = c(spearman_corr_BE$p.value,
-              spearman_corr_BElow$p.value,
-              spearman_corr_BElowtomod$p.value,
-              spearman_corr_BEmodtohigh$p.value,
-              spearman_corr_area$p.value,
-              spearman_corr_slope$p.value,
-              spearman_corr_Q$p.value)
-)
+# Initialize a list to store results
+spearman_results_Q <- lapply(vars_to_test_Q, function(var) {
+  
+  # Extract x and y, remove rows with NA
+  df <- CombinedData[, c("Discharge_cms", var)]
+  df <- na.omit(df)
+  
+  # Run Spearman correlation test
+  test <- cor.test(df$Discharge_cms, df[[var]], method = "spearman")
+  
+  # Return results as a row in a data frame
+  data.frame(
+    Variable = var,
+    Spearman_rho = test$estimate,
+    p_value = test$p.value,
+    stringsAsFactors = FALSE
+  )
+})
 
-# Print the results table
-print(results)
+# Combine into a single data frame
+spearman_df_Q <- do.call(rbind, spearman_results_Q)
 
-
+# Print results
+print(spearman_df_Q)
 ```
 
-Miscellaneous Correlation Significant Tests for Discharge normalized Levoglucosan concentrations
-``` {r}
-#by burn extent
-spearman_corr_BE <- cor.test(CombinedData$Burn_Extent_percent, CombinedData$Q_norm_levo, method = "spearman", use = "pairwise.complete.obs")
-#by low severity burn extent
-spearman_corr_BElow <- cor.test(CombinedData$Area_low_severity_percent, CombinedData$Q_norm_levo, method = "spearman", use = "pairwise.complete.obs")
-#by low to moderate severity burn extent
-spearman_corr_BElowtomod <- cor.test(CombinedData$Area_low_to_mod_severity_percent, CombinedData$Q_norm_levo, method = "spearman", use = "pairwise.complete.obs")
-#by moderate to high severity burn extent
-spearman_corr_BEmodtohigh <- cor.test(CombinedData$Area_mod_to_high_severity_percent, CombinedData$Q_norm_levo, method = "spearman", use = "pairwise.complete.obs")
-#by watershed area
-spearman_corr_area <- cor.test(CombinedData$Area_square_kilometer, CombinedData$Q_norm_levo, method = "spearman", use = "pairwise.complete.obs")
-#by watershed slope
-spearman_corr_slope <- cor.test(CombinedData$Average_slope_percent, CombinedData$Q_norm_levo, method = "spearman", use = "pairwise.complete.obs")
+Spearman's Rank: Levo versus watershed and fire characteristics 
+```{r}
+# Variables to test against Levo_micro_mol_C_per_L
+vars_to_test_levo_conc <- c("Area_square_kilometer", "Average_slope_percent", "Average_precipitation_milli_meter", "Burn_Extent_percent", "Area_low_severity_percent", "Area_low_to_mod_severity_percent", "Area_mod_to_high_severity_percent", "Forest_percent", "Shrub_percent", "Developed_percent", "Sandstone_and_sedimentary_percent", "Igneous_percent", "Suficial_Sediments_percent", "Schist_percent")
 
+# Initialize a list to store results
+spearman_results_levo_conc <- lapply(vars_to_test_levo_conc, function(var) {
+  
+  # Extract x and y, remove rows with NA
+  df <- CombinedData[, c("Levo_micro_mol_C_per_L", var)]
+  df <- na.omit(df)
+  
+  # Run Spearman correlation test
+  test <- cor.test(df$Levo_micro_mol_C_per_L, df[[var]], method = "spearman")
+  
+  # Return results as a row in a data frame
+  data.frame(
+    Variable = var,
+    Spearman_rho = test$estimate,
+    p_value = test$p.value,
+    stringsAsFactors = FALSE
+  )
+})
 
-# Extract p-values and rho values
-results <- data.frame(
-  Comparison = c("Qnorm_levo vs burn_extent",
-                  "Qnorm_levo vs low burn_extent",
-                  "Qnorm_levo vs low-mod burn_extent",
-                 "Qnorm_levo vs mod-high burn extent", 
-                 "Qnorm_levo vs watershed area", 
-                 "Qnorm_levo vs watershed slope",
-                 "Qnorm_levo vs discharge"),
-  Rho = c(spearman_corr_BE$estimate,
-          spearman_corr_BElow$estimate,
-          spearman_corr_BElowtomod$estimate,
-          spearman_corr_BEmodtohigh$estimate,
-          spearman_corr_area$estimate,
-          spearman_corr_slope$estimate,
-          spearman_corr_Q$estimate),
-  P_Value = c(spearman_corr_BE$p.value,
-              spearman_corr_BElow$p.value,
-              spearman_corr_BElowtomod$p.value,
-              spearman_corr_BEmodtohigh$p.value,
-              spearman_corr_area$p.value,
-              spearman_corr_slope$p.value,
-              spearman_corr_Q$p.value)
-)
+# Combine into a single data frame
+spearman_df_levo_conc <- do.call(rbind, spearman_results_levo_conc)
 
-# Print the results table
-print(results)
+# Print results
+print(spearman_df_levo_conc)
 ```
 
-Miscellaneous Correlation Significant Tests for Levo:DOC
-``` {r}
-#by burn extent
-spearman_corr_BE <- cor.test(CombinedData$Burn_Extent_percent, CombinedData$Levo_DOC_percent, method = "spearman", use = "pairwise.complete.obs")
-#by low severity burn extent
-spearman_corr_BElow <- cor.test(CombinedData$Area_low_severity_percent, CombinedData$Levo_DOC_percent, method = "spearman", use = "pairwise.complete.obs")
-#by low to moderate severity burn extent
-spearman_corr_BElowtomod <- cor.test(CombinedData$Area_low_to_mod_severity_percent, CombinedData$Levo_DOC_percent, method = "spearman", use = "pairwise.complete.obs")
-#by moderate to high severity burn extent
-spearman_corr_BEmodtohigh <- cor.test(CombinedData$Area_mod_to_high_severity_percent, CombinedData$Levo_DOC_percent, method = "spearman", use = "pairwise.complete.obs")
-#by watershed area
-spearman_corr_area <- cor.test(CombinedData$Area_square_kilometer, CombinedData$Levo_DOC_percent, method = "spearman", use = "pairwise.complete.obs")
-#by watershed slope
-spearman_corr_slope <- cor.test(CombinedData$Average_slope_percent, CombinedData$Levo_DOC_percent, method = "spearman", use = "pairwise.complete.obs")
-#by discharge
-spearman_corr_Q <- cor.test(CombinedData$Discharge_cms, CombinedData$Levo_DOC_percent, method = "spearman", use = "pairwise.complete.obs")
+Spearman's Rank: Levo-DOC versus watershed and fire characteristics 
+```{r}
+# Variables to test against Levo_DOC_percent
+vars_to_test_levo_DOC <- c("Area_square_kilometer", "Average_slope_percent", "Average_precipitation_milli_meter", "Burn_Extent_percent", "Area_low_severity_percent", "Area_low_to_mod_severity_percent", "Area_mod_to_high_severity_percent", "Forest_percent", "Shrub_percent", "Developed_percent", "Sandstone_and_sedimentary_percent", "Igneous_percent", "Suficial_Sediments_percent", "Schist_percent")
 
-#Extract p-values and rho values
-results <- data.frame(
-  Comparison = c("Levo_DOC_perc vs burn_extent",
-                  "Levo_DOC_perc vs low burn_extent",
-                  "Levo_DOC_perc vs low-mod burn_extent",
-                 "Levo_DOC_perc vs mod-high burn extent", 
-                 "Levo_DOC_perc vs watershed area", 
-                 "Levo_DOC_perc vs watershed slope",
-                 "Levo_DOC_perc vs discharge"),
-  Rho = c(spearman_corr_BE$estimate,
-          spearman_corr_BElow$estimate,
-          spearman_corr_BElowtomod$estimate,
-          spearman_corr_BEmodtohigh$estimate,
-          spearman_corr_area$estimate,
-          spearman_corr_slope$estimate,
-          spearman_corr_Q$estimate),
-  P_Value = c(spearman_corr_BE$p.value,
-              spearman_corr_BElow$p.value,
-              spearman_corr_BElowtomod$p.value,
-              spearman_corr_BEmodtohigh$p.value,
-              spearman_corr_area$p.value,
-              spearman_corr_slope$p.value,
-              spearman_corr_Q$p.value)
-)
+# Initialize a list to store results
+spearman_results_levo_DOC <- lapply(vars_to_test_levo_DOC, function(var) {
+  
+  # Extract x and y, remove rows with NA
+  df <- CombinedData[, c("Levo_DOC_percent", var)]
+  df <- na.omit(df)
+  
+  # Run Spearman correlation test
+  test <- cor.test(df$Levo_DOC_percent, df[[var]], method = "spearman")
+  
+  # Return results as a row in a data frame
+  data.frame(
+    Variable = var,
+    Spearman_rho = test$estimate,
+    p_value = test$p.value,
+    stringsAsFactors = FALSE
+  )
+})
 
-# Print the results table
-print(results)
+# Combine into a single data frame
+spearman_df_levo_DOC <- do.call(rbind, spearman_results_levo_DOC)
+
+# Print results
+print(spearman_df_levo_DOC)
 ```
 
 NMDS
 Prepare data for NMDS
 ```{r}
 #Isolate PyC concentrations and relevant ratios 
-PyC_conc_rat <- CombinedData[, c("levo_micro_gram_per_liter", "DOC_mgC_per_L", "DBC_mgC_per_L", "DBC_DOC_percent", "Levo_DOC_percent")]
-
-#put levoglucosan concentrations into the same units as DOC and DBC
-PyC_conc_rat$levo_mg_per_L <- PyC_conc_rat$levo_micro_gram_per_liter/1000 #dividing micrograms per liter by 1000 to get levoglucosan concentrations in milligrams per liter
-
-#delete the levoglucosan column with concentrations in micrograms per liter
-analyte_data_conc_rat <- PyC_conc_rat[,c("levo_mg_per_L", "DOC_mgC_per_L", "DBC_mgC_per_L", "DBC_DOC_percent", "Levo_DOC_percent")]
-
-View(analyte_data_conc_rat)
+analyte_data_PyC_conc_rat <- CombinedData[, c("DOC_micro_mol_C_per_L", "Levo_micro_mol_C_per_L", "B6CA_and_B5CA_micro_mol_C_per_L", "Levo_DOC_percent", "BPCA_DOC_percent")]
 ```
 
 Run NMDS
 ```{r}
-nmds_result <- metaMDS(analyte_data_conc_rat, k = 2, trymax = 100)
+nmds_result <- metaMDS(analyte_data_PyC_conc_rat, k = 2, trymax = 100)
 print(nmds_result)
 ```
 
-
-Plot NMDS Results - Full NMDS
+Plot NMDS Results - Full NMDS and print figure
 ```{r}
 # Extract NMDS scores for plotting
 nmds_scores <- as.data.frame(scores(nmds_result, display = "sites"))
@@ -331,7 +337,7 @@ envfit_result <- envfit(nmds_result, env_variables, permutations = 999)
 en_coord_cont = as.data.frame(scores(envfit_result, "vectors")) * ordiArrowMul(envfit_result)
 
 # Shorten labels for plotting species and vectors
-nmds_species$ShortLabel <- c("Levo", "DOC", "DBC", "DBC:DOC", "Levo:DOC")  # Replace with your short labels
+nmds_species$ShortLabel <- c("DOC", "Levo","BPCA","Levo:DOC", "BPCA:DOC")  # Replace with your short labels
 
 # Change labels for plotting vectors. Also wrapping text for improving clarity of the plot
 en_coord_cont$WrappedLabel <- c(
@@ -344,7 +350,7 @@ en_coord_cont$WrappedLabel <- c(
   "Low-Mod\nBurn Extent",
   "Mod-High\nBurn Extent" #Moderate to High Burn Extent
 )
-  
+
 #NMDS Visual Plot
 ggplot(nmds_scores, aes(x = NMDS1, y = NMDS2)) +
   
@@ -357,13 +363,30 @@ ggplot(nmds_scores, aes(x = NMDS1, y = NMDS2)) +
   #Species
   geom_point(data = nmds_species, aes(x = NMDS1, y = NMDS2), shape = 8, stroke = 2, size = 3, alpha = 1, colour = "hotpink") +
   
+  geom_text_repel(
+  data = nmds_species,
+  aes(x = NMDS1, y = NMDS2, label = ShortLabel),
+  colour = "black", fontface = "bold", size = 3,
+  box.padding = 0.3,
+  point.padding = 0.25,
+  segment.color = NA,
+  max.overlaps = Inf,
+  force = 1
+) +
+
+geom_text_repel(
+  data = en_coord_cont,
+  aes(x = NMDS1 * 0.75, y = NMDS2 * 0.75, label = WrappedLabel),
+  size = 3,
+  box.padding = 0.5,
+  point.padding = 0.25,
+  segment.color = NA,
+  max.overlaps = Inf,
+  force = 1
+) +
+  
   #vectors
   geom_segment(aes(x = 0, y = 0, xend = NMDS1*0.75, yend = NMDS2*0.75), data = en_coord_cont, linewidth =1, alpha = 1, colour = "black", arrow = arrow(length = unit(0.2, "cm"), type = "closed")) +
-
-#Add repelled labels for species and vectors
-  geom_text_repel(data = nmds_species, aes(x = NMDS1, y = NMDS2, label = ShortLabel), colour = "black", fontface = "bold", size = 3, box.padding = 0.2, max.overlaps = Inf) + #species
-  geom_text_repel(data = en_coord_cont, aes(x = NMDS1*0.75, y = NMDS2*0.75, label = WrappedLabel), size = 3, box.padding = 0.5, max.overlaps = 50) + #vectors
-  
   
   #chart title
   labs(x = "NMDS1",
@@ -382,39 +405,12 @@ ggplot(nmds_scores, aes(x = NMDS1, y = NMDS2)) +
 envfit_result
 ```
 
-Plot NMDS Results - Simplified NMDS Figure
+Print a labeled NMDS figure
 ```{r}
-# Extract NMDS scores for plotting
-nmds_scores <- as.data.frame(scores(nmds_result, display = "sites"))
-nmds_species<-as.data.frame(scores(nmds_result, display="species"))
-nmds_scores$Site <- CombinedData$Watershed  # Add Site info for coloring
-nmds_scores$time <- CombinedData$time_since_fire_day #this is for coloring the data points by time
-nmds_scores$watershed <- CombinedData$Watershed #this is for the point shape by watershed
+# Begin saving to file to output folder
+CairoPNG(filename = file.path(output_folder, "NMDS_labeled.png"),
+         width = 7, height = 4, units = "in", res = 300)
 
-# Environmental variables (adjust to your desired variables)
-env_variables <- CombinedData[c("time_since_fire_day", "Area_low_severity_percent", "Discharge_cms", "Area_mod_to_high_severity_percent", "Area_square_kilometer")]
-
-#If want ALL environmental variables for sasha, use the code below
-#env_variables <- CombinedData[c("time_since_fire_day", "Area_low_severity_percent", "Discharge_cms", "Area_square_kilometer", "Average_slope_percent", "Burn_Extent_percent", "Area_low_to_mod_severity_percent", "Area_mod_to_high_severity_percent")]
-
-#assign environmental variables to df
-envfit_result <- envfit(nmds_result, env_variables, permutations = 999)
-
-#have the environmental variables assigned to arrows for plotting
-en_coord_cont = as.data.frame(scores(envfit_result, "vectors")) * ordiArrowMul(envfit_result)
-
-# Shorten labels for plotting species and vectors
-nmds_species$ShortLabel <- c("Levo", "DOC", "DBC", "DBC:DOC", "Levo:DOC")  # Replace with your short labels
-
-# Change labels for plotting vectors. Also wrapping text for improving clarity of the plot
-en_coord_cont$WrappedLabel <- c(
-  "Time Since\nFire", #Time Since FIre
-  "Low Severity\nBurn Extent", #Low Seveirty Burn Extent
-  "Discharge", #Discharge
-  "Mod-High\nBurn Extent", #Moderate to High Burn Extent
-  "Watershed\nArea" #Watershed Area
-)
-  
 #NMDS Visual Plot
 ggplot(nmds_scores, aes(x = NMDS1, y = NMDS2)) +
   
@@ -427,13 +423,30 @@ ggplot(nmds_scores, aes(x = NMDS1, y = NMDS2)) +
   #Species
   geom_point(data = nmds_species, aes(x = NMDS1, y = NMDS2), shape = 8, stroke = 2, size = 3, alpha = 1, colour = "hotpink") +
   
+  geom_text_repel(
+  data = nmds_species,
+  aes(x = NMDS1, y = NMDS2, label = ShortLabel),
+  colour = "black", fontface = "bold", size = 3,
+  box.padding = 0.3,
+  point.padding = 0.25,
+  segment.color = NA,
+  max.overlaps = Inf,
+  force = 1
+) +
+
+geom_text_repel(
+  data = en_coord_cont,
+  aes(x = NMDS1 * 0.75, y = NMDS2 * 0.75, label = WrappedLabel),
+  size = 3,
+  box.padding = 0.5,
+  point.padding = 0.25,
+  segment.color = NA,
+  max.overlaps = Inf,
+  force = 1
+) +
+  
   #vectors
   geom_segment(aes(x = 0, y = 0, xend = NMDS1*0.75, yend = NMDS2*0.75), data = en_coord_cont, linewidth =1, alpha = 1, colour = "black", arrow = arrow(length = unit(0.2, "cm"), type = "closed")) +
-
-#Add repelled labels for species and vectors
-  geom_text_repel(data = nmds_species, aes(x = NMDS1, y = NMDS2, label = ShortLabel), colour = "black", fontface = "bold", size = 3, box.padding = 0.2, max.overlaps = Inf) + #species
-  geom_text_repel(data = en_coord_cont, aes(x = NMDS1*0.75, y = NMDS2*0.75, label = WrappedLabel), size = 3, box.padding = 0.5, max.overlaps = 50) + #vectors
-  
   
   #chart title
   labs(x = "NMDS1",
@@ -448,22 +461,76 @@ ggplot(nmds_scores, aes(x = NMDS1, y = NMDS2)) +
     axis.line.y = element_line(size = 0.5)
   )
 
-#Determine which vectors are statistically significant
-envfit_result
+# Finish saving the NMDS figure file
+dev.off()
 ```
 
-#Calculate fluxes and yields
+Print Unlabeled NMDS for figure making
 ```{r}
-#discharge normalized levoglucosan concentrations
-CoastalFires_CombinedData$Q_norm_levo <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$levo_micro_gram_per_liter / CoastalFires_CombinedData$Discharge_cms)
+# Begin saving to file to output folder
+CairoPNG(filename = file.path(output_folder, "NMDS_unlabeled.png"), 
+         width = 7, height = 4, units = "in", res = 300)
 
-#flux
-CoastalFires_CombinedData$flux_levo <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$levo_micro_gram_per_liter * CoastalFires_CombinedData$Discharge_cms)
-CoastalFires_CombinedData$flux_DOC <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$DOC_mgC_per_L * CoastalFires_CombinedData$Discharge_cms)
-CoastalFires_CombinedData$flux_DBC <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$DBC_mgC_per_L * CoastalFires_CombinedData$Discharge_cms)
+# Draw the plot (your label-free version)
+ggplot(nmds_scores, aes(x = NMDS1, y = NMDS2)) +
+  geom_point(data = nmds_scores, aes(size = 100, color = time, fill = time, shape = watershed)) +
+  scale_shape_manual(values = c(21, 22, 24, 23, 25)) +
+  scale_fill_gradient(low = "#00FFFF", high = "navy") +
+  scale_color_gradient(low = "#00FFFF", high = "navy") +
+  geom_point(data = nmds_species, aes(x = NMDS1, y = NMDS2), 
+             shape = 8, stroke = 2, size = 3, alpha = 1, colour = "hotpink") +
+  geom_segment(data = en_coord_cont, 
+               aes(x = 0, y = 0, xend = NMDS1 * 0.75, yend = NMDS2 * 0.75),
+               linewidth = 1, alpha = 1, colour = "black",
+               arrow = arrow(length = unit(0.2, "cm"), type = "closed")) +
+  labs(x = "NMDS1", y = "NMDS2") +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    axis.line = element_line(size = 0.5),
+    axis.ticks = element_line(size = 0.5),
+    axis.ticks.length = unit(3, "pt"),
+    axis.line.x = element_line(size = 0.5),
+    axis.line.y = element_line(size = 0.5)
+  )
 
-#yield
-CoastalFires_CombinedData$yield_levo <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$flux_levo / CoastalFires_CombinedData$Area_square_kilometer)
-CoastalFires_CombinedData$yield_DOC <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$flux_DOC / CoastalFires_CombinedData$Area_square_kilometer)
-CoastalFires_CombinedData$yield_DBC <- with(CoastalFires_CombinedData, CoastalFires_CombinedData$flux_DBC / CoastalFires_CombinedData$Area_square_kilometer)
+# Finish saving the NMDS figure file
+dev.off()
+```
+
+#Calculate fluxes of levoglucosan in the first year post-fire
+```{r}
+#Convert discharge values from cubic meters per second (cms) to liters per second
+CombinedData$Discharge_liter_per_sec <- CombinedData$Discharge_cms * 1000
+
+#Calculate sample-specific flux values and convert to units of kg per year
+CombinedData$Levo_flux_kilo_gram_C_per_year <- CombinedData$Levo_micro_mol_C_per_L * CombinedData$Discharge_liter_per_sec * 31536000 * 12 / 1000000000
+
+#Average flux samples by watershed
+avg_flux_per_watershed <- CombinedData %>%
+  group_by(Watershed) %>%
+  summarise(
+    mean_flux = mean(Levo_flux_kilo_gram_C_per_year, na.rm = TRUE),
+    sd_flux = sd(Levo_flux_kilo_gram_C_per_year, na.rm = TRUE),
+    n = sum(!is.na(Levo_flux_kilo_gram_C_per_year))
+  )
+
+#Calculate sum of fluxes from each watershed
+total_flux_all_watersheds <- sum(avg_flux_per_watershed$mean_flux)
+total_flux_se <- sqrt(sum((avg_flux_per_watershed$sd_flux)^2 / avg_flux_per_watershed$n))
+
+#Print value with standard deviation carried over
+print(total_flux_all_watersheds) #flux
+print(total_flux_se) #standard error
+```
+
+Extrapolate levoglucosan flux to total low-temperature PyC
+```{r}
+#According to Norwood et al. (2013), levoglucosan can make up to 1.7% of total low-temperature PyC. Apply this conversion factor
+low_temp_PyC_flux_per_year <- total_flux_all_watersheds * 100 / 1.7
+low_temp_PyC_flux_se <- total_flux_se * 100 / 1.7 #standard error carried over
+
+#Print values
+print(low_temp_PyC_flux_per_year) #flux
+print(low_temp_PyC_flux_se) #standard error
 ```

@@ -4,7 +4,7 @@ author: "rbb"
 date: "`r Sys.Date()`"
 output: html_document
 ---
-Before starting, find and download necessary files:
+Before starting, make sure to read the "ReadMe.txt" associated with this script. Before you begin, you must find and download necessary files:
 
 Levoglucosan data from ESS-DIVE:
   CoastalFires_LevoglucosanData.csv
@@ -26,16 +26,19 @@ Load library
 library(tidyverse)
 ```
 
-Set directory for input files and working directory
+Set directory for input/output files and working directory
 ```{r}
-#Input_Files folder should contains the following files: CoastalFires_LevoglucosanData.csv, CoastalFires_BiogeochemData.csv, CoastalFires_DischargeData.csv, CoastalFires_WatershedData.csv
-input_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/Input_Files" # Change this to match your directory. Make sure it ends in "/Input_Files"
+#Input files folder should contains the following files: CoastalFires_LevoglucosanData.csv, CoastalFires_BiogeochemData.csv, CoastalFires_DischargeData.csv, CoastalFires_WatershedData.csv
+input_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/Input" # Change this to match your directory. Make sure it ends in "/Input"
 
 #working folder should contain: ReadMe.txt, CoastalFires_DataFrameWrangling.Rmd, and CoastalFires_DataAnalysis.Rmd
 working_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/"  # Change this to match your directory.
+
+#out put folder should not contain any files yet
+output_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/Output" #Change this to match your directory. Make sure it ends in "/Output"
 ```
 
-Load datafiles from Input_Files folder: levoglucosan data, discharge data, watershed and burn severity data, and previously published organic carbon and black carbon data
+Load datafiles from "Input" folder: levoglucosan data, watershed and burn severity data, and previously published organic carbon and black carbon data
 ```{r}
 #From ESS-DIVE
 LevoData <- readr::read_csv(file.path(input_folder, "CoastalFires_LevoglucosanData.csv"))
@@ -43,7 +46,6 @@ LevoData <- readr::read_csv(file.path(input_folder, "CoastalFires_LevoglucosanDa
 #From CUAHSI Hydroshare
 BlackCarbonData <- readr::read_csv(file.path(input_folder, "CoastalFires_BiogeochemData.csv"))
 WatershedData <- readr::read_csv(file.path(input_folder, "CoastalFires_WatershedData.csv"))
-DischargeData <- readr::read_csv(file.path(input_folder, "CoastalFires_DischargeData.csv"))
 ``` 
 
 Combine LevoData, WatershedData, and BlackCarbonData data frames to one centralized dataframe: CombinedData
@@ -56,24 +58,61 @@ CombinedData <- left_join(CombinedData, WatershedData, by = "Watershed")
 CombinedData <- CombinedData %>% select(-Lat, -Long) #delete extra location columns
 ```
 
-Adjust the black carbon data frame to remove unnecessary columns
+Unit Conversions: converting units to micro moles of C per liter (uM-C) in order to better compare between levoglucosan and black carbon and DOC
 ```{r}
-#Adjust the published data frame to make it more applicable to current study. 
+#dissolved black carbon (DBC) and dissolved organic carbon (DOC) are in micro grams of carbon per liter. To get both values into micro moles of carbon per liter, divide by mass of C atom to convert units into milli moles of C per liter (mM-C). Then multiply by 1000 to convert from mM-C to uM-C.
+CombinedData$DOC_micro_mol_C_per_L <- CombinedData$DOC_mgC_per_L / 12 * 1000
+CombinedData$DBC_micro_mol_C_per_L <- CombinedData$DBC_mgC_per_L / 12 * 1000
 
-#Remove unnecessary columns. The columns that are being removed are associated with the particulate phase (i.e., particulate organic carbon and particulate black carbon). As levoglucosan concentrations were determined only for the dissolved phase, the following data analysis will also only focus on the dissolved phase. 
-BlackCarbonData <- BlackCarbonData %>%
-  select(-TSS_mg_per_L, -POC_mgC_per_L, -`PBC_mgC_per_L`, -PBC_TSS_percent, 
-         -PBC_POC_percent, -pB6CA_nano_mol_per_L, -pB5CA_nano_mol_per_L, -pB6CA_B5CA)
+#individual BPCAs are in nano moles per liter (nM). Multiply by number of C atoms in molecule to convert units to nM-C.Then divide by 1000 to convert from nM-C to uM-C.
+CombinedData$B6CA_micro_mol_C_per_L <- CombinedData$dB6CA_nano_mol_per_L * 12 / 1000 #B6CA, or benzenehexacarboxylic acid, has 12 C atoms
+CombinedData$B5CA_micro_mol_C_per_L <- CombinedData$dB5CA_nano_mol_per_L * 11 / 1000 #B5CA, or benzenepentacarboxylic acid, has 12 C atoms
+
+#Levoglucosan is in micro grams per liter. Divide by molecular weight of levoglucosan to get units into micro moles of levoglucosan per liter (uM). Then multiply by number of C atoms in the levoglucosan molecule to convert units to uM-C.
+CombinedData$Levo_micro_mol_C_per_L <- CombinedData$levo_micro_gram_per_liter / 162.14 * 6 #levoglucosan has six C atoms in its structure
 ```
 
-Re-arranged columns and change column names
+PyC-to-DOC ratios: calculate levoclucosan-dissolved organic carbon and [B6CA+B5CA]-dissolved organic carbon ratios
+```{r}
+#Add a new column that calculates the concentration of both B6CA and B5CA molecular markers. To avoid bias (due to conversion factors associated with calculating black carbon concentrations with BPCAs) when comparing black carbon and levoglucosan, we use the combined concentration of B6CA and B5CA. 
+CombinedData$B6CA_and_B5CA_micro_mol_C_per_L <- CombinedData$B6CA_micro_mol_C_per_L + CombinedData$B5CA_micro_mol_C_per_L
+
+#calculate the ratio of levoglucosan to bulk DOC and BPCA to DOC
+CombinedData$Levo_DOC_percent <- CombinedData$Levo_micro_mol_C_per_L / CombinedData$DOC_micro_mol_C_per_L * 100
+CombinedData$BPCA_DOC_percent <- CombinedData$B6CA_and_B5CA_micro_mol_C_per_L / CombinedData$DOC_micro_mol_C_per_L * 100
+```
+
+Calculating a "Time Since Fire" metric
+```{r}
+#Ensuring that the Date column is correctly classified as a date rather than a character
+CombinedData$Date <- as.Date(CombinedData$Date, format = "%d-%b-%y")
+
+#Calculating the time since fire for all samples and ensuring it is a numeric value
+fire_date <- as.Date("2020-08-16")
+CombinedData$time_since_fire_day <- as.numeric(CombinedData$Date - fire_date)
+```
+
+Clean up the csv: remove duplicate columns
+```{r}
+#Remove unnecessary columns. The columns that are being removed with the following script are associated with the particulate phase (i.e., particulate organic carbon and particulate black carbon). As levoglucosan concentrations were determined only for the dissolved phase, the following data analysis will also only focus on the dissolved phase. 
+CombinedData <- CombinedData %>%
+  select(-TSS_mg_per_L, -POC_mgC_per_L, -`PBC_mgC_per_L`, -PBC_TSS_percent, 
+         -PBC_POC_percent, -pB6CA_nano_mol_per_L, -pB5CA_nano_mol_per_L, -pB6CA_B5CA, -Flow_category)
+
+#Remove levoglucosan, DBC, BPCA, and DOC columns with old units
+CombinedData <- CombinedData %>%
+  select(-DOC_mgC_per_L, -DBC_mgC_per_L, -dB6CA_nano_mol_per_L, -dB5CA_nano_mol_per_L, 
+         -levo_micro_gram_per_liter, -std_levo_micro_gram_per_liter)
+```
+
+Re-arrange column order
 ```{r}
 # Specify the desired column order
-desired_order <- c("Sample_ID", "Watershed", "Date", "Time", "Latitude", "Longitude", "Location_Change",
-                   "Discharge_cms", "Flow_category", "DOC_mgC_per_L", 
-                   "levo_micro_gram_per_liter", "std_levo_micro_gram_per_liter", 
-                   "DBC_mgC_per_L", "DBC_DOC_percent", "dB6CA_nano_mol_per_L", "dB5CA_nano_mol_per_L", 
-                   "dB6CA_B5CA", "a254_per_m", "SUVA254_L_per_mgC_per_m", 
+desired_order <- c("Sample_ID", "Watershed", "Date", "Time", "time_since_fire_day", "Latitude", "Longitude", "Location_Change",
+                   "Discharge_cms", "DOC_micro_mol_C_per_L", "Levo_micro_mol_C_per_L", "B6CA_micro_mol_C_per_L",
+                   "B5CA_micro_mol_C_per_L", "B6CA_and_B5CA_micro_mol_C_per_L", "dB6CA_B5CA",
+                   "Levo_DOC_percent", "BPCA_DOC_percent", "DBC_micro_mol_C_per_L", "DBC_DOC_percent",
+                   "a254_per_m", "SUVA254_L_per_mgC_per_m", 
                    "Area_square_kilometer", "Average_slope_percent", 
                    "Average_precipitation_milli_meter", "Burn_Extent_percent", 
                    "Area_low_severity_percent", "Area_low_to_mod_severity_percent", 
@@ -89,6 +128,6 @@ CombinedData <- CombinedData[, desired_order]
 Create a csv file of the combined dataset:CoastalFires_CombinedData
 ```{r}
 write.csv(CombinedData, 
-          file = file.path(working_folder, "CoastalFires_CombinedData.csv"), 
+          file = file.path(output_folder, "CoastalFires_CombinedData.csv"), 
           row.names = FALSE)  #Prevents writing row numbers
 ```
