@@ -4,13 +4,13 @@ author: "rbb"
 date: "`r Sys.Date()`"
 output: html_document
 ---
-Before starting, make sure to read the "ReadMe.txt" associated with this script. Before you begin, you must find and download necessary files:
+Before starting, make sure to read the "Manuscript_Workflow_Instructions.pdf" associated with this script. Before you begin, you must find and download necessary files:
 
 Levoglucosan data from ESS-DIVE:
   CoastalFires_LevoglucosanData.csv
 
 Black carbon data from CUAHSI Hydroshare:
-Barton, R., C. Richardson, E. Pae, M. Montalvo, M. Redmond, M. Zimmer, S. Wagner (2025). Hydrology, rather than wildfire burn extent, determines post-fire organic and black carbon export from mountain rivers in central coastal California [Dataset], HydroShare, https://www.hydroshare.org/resource/421c0226bb38460c8393d67fe0c4f802/
+Barton, R., C. Richardson, E. Pae, M. Montalvo, M. Redmond, M. Zimmer, S. Wagner (2025). Hydrology, rather than wildfire burn extent, determines post-fire organic and black carbon export from mountain rivers in central coastal California [Dataset], HydroShare, https://doi.org/10.4211/hs.421c0226bb38460c8393d67fe0c4f802 
   Organic and Black carbon data: CoastalFires_BiogeochemData.csv
   Discharge data: CoastalFires_DischargeData.csv
   Watershed Metadata: CoastalFires_WatershedData.csv
