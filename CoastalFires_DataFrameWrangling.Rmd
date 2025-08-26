@@ -15,6 +15,11 @@ Barton, R., C. Richardson, E. Pae, M. Montalvo, M. Redmond, M. Zimmer, S. Wagner
   Discharge data: CoastalFires_DischargeData.csv
   Watershed Metadata: CoastalFires_WatershedData.csv
   
+  
+Read in data files 
+```{r}
+```
+
 
 Install package if necessary
 ```{r}
@@ -41,11 +46,17 @@ output_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/Output" 
 Load datafiles from "Input" folder: levoglucosan data, watershed and burn severity data, and previously published organic carbon and black carbon data
 ```{r}
 #From ESS-DIVE
-LevoData <- readr::read_csv(file.path(input_folder, "CoastalFires_LevoglucosanData.csv"))
+  #download as zip file
+  temp <- tempdir() #download zip to temp dir 
+  download.file("https://data.ess-dive.lbl.gov/catalog/d1/mn/v2/object/ess-dive-d0f648b2caec574-20250610T193643770", file.path(temp))
+  
+  #unzip file
+  unzip(zipfile=file.path(temp, "levo.zip"), exdir=temp)
+LevoData <- readr::read_csv()
 
 #From CUAHSI Hydroshare
-BlackCarbonData <- readr::read_csv(file.path(input_folder, "CoastalFires_BiogeochemData.csv"))
-WatershedData <- readr::read_csv(file.path(input_folder, "CoastalFires_WatershedData.csv"))
+BlackCarbonData <- readr::read_csv("https://www.hydroshare.org/resource/26f08ef7fe344fcb9d3da45160b697fe/data/contents/CoastalFires_BiogeochemData.csv")
+WatershedData <- readr::read_csv("https://www.hydroshare.org/resource/26f08ef7fe344fcb9d3da45160b697fe/data/contents/CoastalFires_WatershedData.csv")
 ``` 
 
 Combine LevoData, WatershedData, and BlackCarbonData data frames to one centralized dataframe: CombinedData
