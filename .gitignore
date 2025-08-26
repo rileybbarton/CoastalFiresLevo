@@ -7,6 +7,7 @@
 
 # Word temporary
 ~$*.doc*
+~$*.rtf*
 
 # Word Auto Backup File
 Backup of *.doc*
