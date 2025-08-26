@@ -15,15 +15,10 @@ Barton, R., C. Richardson, E. Pae, M. Montalvo, M. Redmond, M. Zimmer, S. Wagner
   Discharge data: CoastalFires_DischargeData.csv
   Watershed Metadata: CoastalFires_WatershedData.csv
   
-  
-Read in data files 
-```{r}
-```
-
 
 Install package if necessary
 ```{r}
-install.packages("tidyverse")
+#install.packages("tidyverse")
 ```
 
 Load library
@@ -31,29 +26,30 @@ Load library
 library(tidyverse)
 ```
 
-Set directory for input/output files and working directory
-```{r}
-#Input files folder should contains the following files: CoastalFires_LevoglucosanData.csv, CoastalFires_BiogeochemData.csv, CoastalFires_DischargeData.csv, CoastalFires_WatershedData.csv
-input_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/Input" # Change this to match your directory. Make sure it ends in "/Input"
-
-#working folder should contain: ReadMe.txt, CoastalFires_DataFrameWrangling.Rmd, and CoastalFires_DataAnalysis.Rmd
-working_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/"  # Change this to match your directory.
-
-#out put folder should not contain any files yet
-output_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/Output" #Change this to match your directory. Make sure it ends in "/Output"
-```
-
-Load datafiles from "Input" folder: levoglucosan data, watershed and burn severity data, and previously published organic carbon and black carbon data
+Get data files from data repositories (ESS-Dive and Hydroshare)
+levoglucosan data, watershed and burn severity data, and previously published organic carbon and black carbon data
 ```{r}
 #From ESS-DIVE
   #download as zip file
-  temp <- tempdir() #download zip to temp dir 
-  download.file("https://data.ess-dive.lbl.gov/catalog/d1/mn/v2/object/ess-dive-d0f648b2caec574-20250610T193643770", file.path(temp))
+    temp <- tempdir() #get temp directory to download zip to 
+    url <- "https://data.ess-dive.lbl.gov/catalog/d1/mn/v2/object/ess-dive-d0f648b2caec574-20250610T193643770" #location of zip file 
+    download.file(url, file.path(temp, "levo.zip"), mode="wb")
   
-  #unzip file
-  unzip(zipfile=file.path(temp, "levo.zip"), exdir=temp)
-LevoData <- readr::read_csv()
-
+    #unzip file
+    unzip(zipfile=file.path(temp, "levo.zip"), exdir=temp)
+    
+    #load data 
+    header <- readr::read_csv(file.path(temp, "CoastalFires_Water_Levoglucosan.csv"), skip=2, n_max=1, col_names=FALSE, show_col_types = FALSE)
+    LevoData <- readr::read_csv(file.path(temp, "CoastalFires_Water_Levoglucosan.csv"), skip=14, col_names=FALSE, show_col_types = FALSE)
+    colnames(LevoData) <- header 
+    
+    #remove first col and replace -9999 with NA 
+    LevoData <- LevoData %>% select(-Field_Name)
+    LevoData[LevoData == -9999 ] <- NA 
+    
+    #remove end of data row 
+    LevoData <- LevoData[-nrow(LevoData),]
+  
 #From CUAHSI Hydroshare
 BlackCarbonData <- readr::read_csv("https://www.hydroshare.org/resource/26f08ef7fe344fcb9d3da45160b697fe/data/contents/CoastalFires_BiogeochemData.csv")
 WatershedData <- readr::read_csv("https://www.hydroshare.org/resource/26f08ef7fe344fcb9d3da45160b697fe/data/contents/CoastalFires_WatershedData.csv")
@@ -139,6 +135,6 @@ CombinedData <- CombinedData[, desired_order]
 Create a csv file of the combined dataset:CoastalFires_CombinedData
 ```{r}
 write.csv(CombinedData, 
-          file = file.path(output_folder, "CoastalFires_CombinedData.csv"), 
+          file = file.path("Output", "CoastalFires_CombinedData.csv"), 
           row.names = FALSE)  #Prevents writing row numbers
 ```
