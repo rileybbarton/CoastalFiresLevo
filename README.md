@@ -14,9 +14,7 @@ In order to combine the datasets and process data prior to data analysis, run th
 
 Notes: 
  - The script is written in R-Markdown chunks that must be completed in order.
- - This data processing is required before running the DataAnalysis script. We have already run these scripts.
- - The output of this script is a file titled `CoastalFires_CombinedData.csv` which is utilized for further data 
-analysis and figure production and can be found in the folder titled `Output`.
+ - This data processing is required before running the DataAnalysis script.
 
 **Data Analysis:**
 
@@ -24,11 +22,6 @@ In order to conduct all statistical analyses associated with the manuscript, run
 
 `CoastalFires_DataAnalysis.Rmd`
 
-  - This will result in a variety of statistical outputs as well as figures showcasing the results of the NMDS.
-    Both a labeled and unlabeled NMDS figure will be found in the `Output` folder titled:
-
-  - `NMDS_unlabeled.png`
-
-  - `NMDS_labeled.png`
+  - This will result in a variety of statistical outputs as well as an option to print figures showcasing the results of the NMDS.
 
 > Note: The script is written in R-Markdown chunks that must be completed in order. 
