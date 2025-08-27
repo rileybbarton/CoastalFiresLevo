@@ -4,7 +4,7 @@ author: "RB and AC"
 date: "2025-04-13"
 output: html_document
 ---
-Before starting, make sure to read the "Manuscript_Workflow_Instructions.pdf" associated with this script. To utilize this script it is necessary to have run "CosatalFires_DataFrameWrangling.Rmd" ending with the creation of "CoastalFires_CombinedData.csv". If you have not completed this, please do so before continuing. 
+To utilize this script it is necessary to have run "CosatalFires_DataFrameWrangling.Rmd" ending with the creation of "CoastalFires_CombinedData.csv". If you have not completed this, please do so before continuing. 
 
 Here, this script is utilized for data analysis and preliminary figure creation.
 
@@ -26,20 +26,11 @@ library(vegan)
 library(tidyverse)
 ```
 
-Set Input and Output Directory, load data files, and rename them
+Read data file
 ```{r}
-#Input folder should contains the following files: CoastalFires_DischargeData.csv
-input_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/Input" # Change this to match your data frame location. Make sure it ends in "/Input"
-
-#Working folder should contains the following files:
-#From ESS-DIVE: CoastalFires_DataAnalysis.Rmd
-working_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/"  # Change this to match your scripts location
-
-#out put folder should contain a csv created with the DataFrameWrangling script: "CoastalFires_CombinedData.csv" 
-output_folder <- "C:/Users/barto/OneDrive/Documents/GitHub/CoastalFires/Output" #Change this to match your directory
-
-CombinedData <- readr::read_csv(file.path(output_folder,"CoastalFires_CombinedData.csv"))
+CombinedData <- readr::read_csv(file.path("CoastalFires_CombinedData.csv"))
 ``` 
+
 Exclude samples that were taken at a different location. 
 ```{r}
 #Scott Creek flooded during the events of January 27-28th, 2021. Samples were collected at a downstream lagoon site. However, due to this the data collected does not accurately reflect that at the sample site. As such authors of the associated manuscript have excluded it from all data analysis and figure creation.
@@ -308,8 +299,11 @@ print(spearman_df_levo_DOC)
 NMDS
 Prepare data for NMDS
 ```{r}
+#delete rows with NA
+CombinedData_clean <- na.omit(CombinedData)
+
 #Isolate PyC concentrations and relevant ratios 
-analyte_data_PyC_conc_rat <- CombinedData[, c("DOC_micro_mol_C_per_L", "Levo_micro_mol_C_per_L", "B6CA_and_B5CA_micro_mol_C_per_L", "Levo_DOC_percent", "BPCA_DOC_percent")]
+analyte_data_PyC_conc_rat <- CombinedData_clean[, c("DOC_micro_mol_C_per_L", "Levo_micro_mol_C_per_L", "B6CA_and_B5CA_micro_mol_C_per_L", "Levo_DOC_percent", "BPCA_DOC_percent")]
 ```
 
 Run NMDS
@@ -318,17 +312,17 @@ nmds_result <- metaMDS(analyte_data_PyC_conc_rat, k = 2, trymax = 100)
 print(nmds_result)
 ```
 
-Plot NMDS Results - Full NMDS and print figure
+Plot NMDS Results - Full NMDS 
 ```{r}
 # Extract NMDS scores for plotting
 nmds_scores <- as.data.frame(scores(nmds_result, display = "sites"))
 nmds_species<-as.data.frame(scores(nmds_result, display="species"))
-nmds_scores$Site <- CombinedData$Watershed  # Add Site info for coloring
-nmds_scores$time <- CombinedData$time_since_fire_day #this is for coloring the data points by time
-nmds_scores$watershed <- CombinedData$Watershed #this is for the point shape by watershed
+nmds_scores$Site <- CombinedData_clean$Watershed  # Add Site info for coloring
+nmds_scores$time <- CombinedData_clean$time_since_fire_day #this is for coloring the data points by time
+nmds_scores$watershed <- CombinedData_clean$Watershed #this is for the point shape by watershed
 
 # Environmental variables 
-env_variables <- CombinedData[c("time_since_fire_day", "Area_low_severity_percent", "Discharge_cms", "Area_square_kilometer", "Average_slope_percent", "Burn_Extent_percent", "Area_low_to_mod_severity_percent", "Area_mod_to_high_severity_percent")]
+env_variables <- CombinedData_clean[c("time_since_fire_day", "Area_low_severity_percent", "Discharge_cms", "Area_square_kilometer", "Average_slope_percent", "Burn_Extent_percent", "Area_low_to_mod_severity_percent", "Area_mod_to_high_severity_percent")]
 
 #assign environmental variables to df
 envfit_result <- envfit(nmds_result, env_variables, permutations = 999)
@@ -408,7 +402,7 @@ envfit_result
 Print a labeled NMDS figure
 ```{r}
 # Begin saving to file to output folder
-CairoPNG(filename = file.path(output_folder, "NMDS_labeled.png"),
+CairoPNG(filename = file.path("Figures", "NMDS_labeled.png"),
          width = 7, height = 4, units = "in", res = 300)
 
 #NMDS Visual Plot
@@ -468,7 +462,7 @@ dev.off()
 Print Unlabeled NMDS for figure making
 ```{r}
 # Begin saving to file to output folder
-CairoPNG(filename = file.path(output_folder, "NMDS_unlabeled.png"), 
+CairoPNG(filename = file.path("Figures", "NMDS_unlabeled.png"), 
          width = 7, height = 4, units = "in", res = 300)
 
 # Draw the plot (your label-free version)
@@ -522,15 +516,4 @@ total_flux_se <- sqrt(sum((avg_flux_per_watershed$sd_flux)^2 / avg_flux_per_wate
 #Print value with standard deviation carried over
 print(total_flux_all_watersheds) #flux
 print(total_flux_se) #standard error
-```
-
-Extrapolate levoglucosan flux to total low-temperature PyC
-```{r}
-#According to Norwood et al. (2013), levoglucosan can make up to 1.7% of total low-temperature PyC. Apply this conversion factor
-low_temp_PyC_flux_per_year <- total_flux_all_watersheds * 100 / 1.7
-low_temp_PyC_flux_se <- total_flux_se * 100 / 1.7 #standard error carried over
-
-#Print values
-print(low_temp_PyC_flux_per_year) #flux
-print(low_temp_PyC_flux_se) #standard error
 ```
