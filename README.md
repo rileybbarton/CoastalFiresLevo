@@ -22,6 +22,6 @@ In order to conduct all statistical analyses associated with the manuscript, run
 
 `CoastalFires_DataAnalysis.Rmd`
 
-  - This will result in a variety of statistical outputs as well as an option to print figures showcasing the results of the NMDS.
-
-> Note: The script is written in R-Markdown chunks that must be completed in order. 
+Notes: 
+ - The script is written in R-Markdown chunks that must be completed in order.
+ - This will result in a variety of statistical outputs as well as an option to print figures showcasing the results of the NMDS.
