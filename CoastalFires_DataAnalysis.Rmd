@@ -402,7 +402,7 @@ envfit_result
 Print a labeled NMDS figure
 ```{r}
 # Begin saving to file to output folder
-CairoPNG(filename = file.path("Figures", "NMDS_labeled.png"),
+CairoPNG(filename = file.path("NMDS_labeled.png"),
          width = 7, height = 4, units = "in", res = 300)
 
 #NMDS Visual Plot
@@ -462,7 +462,7 @@ dev.off()
 Print Unlabeled NMDS for figure making
 ```{r}
 # Begin saving to file to output folder
-CairoPNG(filename = file.path("Figures", "NMDS_unlabeled.png"), 
+CairoPNG(filename = file.path("NMDS_unlabeled.png"), 
          width = 7, height = 4, units = "in", res = 300)
 
 # Draw the plot (your label-free version)
