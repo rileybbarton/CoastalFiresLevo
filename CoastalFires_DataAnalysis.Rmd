@@ -8,13 +8,13 @@ Before starting, make sure to read the "Manuscript_Workflow_Instructions.pdf" as
 
 Here, this script is utilized for data analysis and preliminary figure creation.
 
-Install necessary packages
+Install necessary packages (run once if necessary)
 ```{r}
-install.packages("gt")
-install.packages("Cairo")
-install.packages("ggrepel")
-install.packages("vegan")
-install.packages("tidyverse")
+#install.packages("gt")
+#install.packages("Cairo")
+#install.packages("ggrepel")
+#install.packages("vegan")
+#install.packages("tidyverse")
 ```
 
 Load necessary libraries
