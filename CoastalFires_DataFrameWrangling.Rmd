@@ -4,17 +4,11 @@ author: "rbb"
 date: "`r Sys.Date()`"
 output: html_document
 ---
-Before starting, make sure to read the "Manuscript_Workflow_Instructions.pdf" associated with this script. Before you begin, you must find and download necessary files:
+Before starting, make sure to read the "Manuscript_Workflow_Instructions.pdf" associated with this script or the READMe found on the GitHub repository. This script will pull datasets from various repositories. However, the necessary files can also be downloaded manually from the following references:
 
-Levoglucosan data from ESS-DIVE:
-  CoastalFires_LevoglucosanData.csv
+Barton R ; Richardson C ; Montalvo M ; Powers-McCormack B ; Forbes B ; Myers-Pigg A (2025): Levoglucosan data from five coastal streams impacted by the 2020 CZU Lightning Complex Fires, California, United States. River Corridor Hydro-biogeochemistry from Molecular to Multi-Basin Scales SFA, ESS-DIVE repository. Dataset. doi:10.15485/2543089 accessed via https://data.ess-dive.lbl.gov/datasets/doi:10.15485/2543089 on 2025-08-27
 
-Black carbon data from CUAHSI Hydroshare:
-Barton, R., C. Richardson, E. Pae, M. Montalvo, M. Redmond, M. Zimmer, S. Wagner (2025). Hydrology, rather than wildfire burn extent, determines post-fire organic and black carbon export from mountain rivers in central coastal California [Dataset], HydroShare, https://doi.org/10.4211/hs.421c0226bb38460c8393d67fe0c4f802 
-  Organic and Black carbon data: CoastalFires_BiogeochemData.csv
-  Discharge data: CoastalFires_DischargeData.csv
-  Watershed Metadata: CoastalFires_WatershedData.csv
-  
+Barton, R., C. Richardson, E. Pae, M. Montalvo, M. Redmond, M. Zimmer, S. Wagner (2025). Hydrology, rather than wildfire burn extent, determines post-fire organic and black carbon export from mountain rivers in central coastal California [Dataset], HydroShare, https://doi.org/10.4211/hs.26f08ef7fe344fcb9d3da45160b697fe
 
 Install package if necessary
 ```{r}
@@ -58,11 +52,11 @@ WatershedData <- readr::read_csv("https://www.hydroshare.org/resource/26f08ef7fe
 Combine LevoData, WatershedData, and BlackCarbonData data frames to one centralized dataframe: CombinedData
 ```{r}
 #combine data frames
-CombinedData <- left_join(LevoData, BlackCarbonData, by = "Sample_ID")
+CombinedData <- left_join(LevoData, BlackCarbonData, by = "IGSN")
 
 #add watershed metadata and remove duplicated columns
 CombinedData <- left_join(CombinedData, WatershedData, by = "Watershed")
-CombinedData <- CombinedData %>% select(-Lat, -Long) #delete extra location columns
+CombinedData <- CombinedData %>% select(-Lat, -Long, -Material, -Sample_ID) #delete extra location columns
 ```
 
 Unit Conversions: converting units to micro moles of C per liter (uM-C) in order to better compare between levoglucosan and black carbon and DOC
@@ -76,7 +70,7 @@ CombinedData$B6CA_micro_mol_C_per_L <- CombinedData$dB6CA_nano_mol_per_L * 12 / 
 CombinedData$B5CA_micro_mol_C_per_L <- CombinedData$dB5CA_nano_mol_per_L * 11 / 1000 #B5CA, or benzenepentacarboxylic acid, has 12 C atoms
 
 #Levoglucosan is in micro grams per liter. Divide by molecular weight of levoglucosan to get units into micro moles of levoglucosan per liter (uM). Then multiply by number of C atoms in the levoglucosan molecule to convert units to uM-C.
-CombinedData$Levo_micro_mol_C_per_L <- CombinedData$levo_micro_gram_per_liter / 162.14 * 6 #levoglucosan has six C atoms in its structure
+CombinedData$Levo_micro_mol_C_per_L <- CombinedData$Levoglucosan_microgram_per_L / 162.14 * 6 #levoglucosan has six C atoms in its structure
 ```
 
 PyC-to-DOC ratios: calculate levoclucosan-dissolved organic carbon and [B6CA+B5CA]-dissolved organic carbon ratios
@@ -109,13 +103,13 @@ CombinedData <- CombinedData %>%
 #Remove levoglucosan, DBC, BPCA, and DOC columns with old units
 CombinedData <- CombinedData %>%
   select(-DOC_mgC_per_L, -DBC_mgC_per_L, -dB6CA_nano_mol_per_L, -dB5CA_nano_mol_per_L, 
-         -levo_micro_gram_per_liter, -std_levo_micro_gram_per_liter)
+         -Levoglucosan_microgram_per_L, -stdev_Levoglucosan_microgram_per_L)
 ```
 
 Re-arrange column order
 ```{r}
 # Specify the desired column order
-desired_order <- c("Sample_ID", "Watershed", "Date", "Time", "time_since_fire_day", "Latitude", "Longitude", "Location_Change",
+desired_order <- c("Watershed", "Date", "Time", "time_since_fire_day", "Latitude", "Longitude", "Location_Change",
                    "Discharge_cms", "DOC_micro_mol_C_per_L", "Levo_micro_mol_C_per_L", "B6CA_micro_mol_C_per_L",
                    "B5CA_micro_mol_C_per_L", "B6CA_and_B5CA_micro_mol_C_per_L", "dB6CA_B5CA",
                    "Levo_DOC_percent", "BPCA_DOC_percent", "DBC_micro_mol_C_per_L", "DBC_DOC_percent",
@@ -135,6 +129,6 @@ CombinedData <- CombinedData[, desired_order]
 Create a csv file of the combined dataset:CoastalFires_CombinedData
 ```{r}
 write.csv(CombinedData, 
-          file = file.path("Output", "CoastalFires_CombinedData.csv"), 
+          file = file.path("CoastalFires_CombinedData.csv"), 
           row.names = FALSE)  #Prevents writing row numbers
 ```
