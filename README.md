@@ -14,9 +14,7 @@ In order to combine the datasets and process data prior to data analysis, run th
 
 Notes: 
  - The script is written in R-Markdown chunks that must be completed in order.
- - This data processing is required before running the DataAnalysis script. We have already run these scripts.
- - The output of this script is a file titled `CoastalFires_CombinedData.csv` which is utilized for further data 
-analysis and figure production and can be found in the folder titled `Output`.
+ - This data processing is required before running the DataAnalysis script.
 
 **Data Analysis:**
 
@@ -24,11 +22,13 @@ In order to conduct all statistical analyses associated with the manuscript, run
 
 `CoastalFires_DataAnalysis.Rmd`
 
-  - This will result in a variety of statistical outputs as well as figures showcasing the results of the NMDS.
-    Both a labeled and unlabeled NMDS figure will be found in the `Output` folder titled:
+Notes: 
+ - The script is written in R-Markdown chunks that must be completed in order.
+ - This will result in a variety of statistical outputs as well as an option to print figures showcasing the results of the NMDS.
 
-  - `NMDS_unlabeled.png`
+**References:**
 
-  - `NMDS_labeled.png`
+These scripts utilize data from multiple sources. The `CoastalFires_DataFrameWrangling.Rmd` script will pull this data from the following repositories:
+ - Barton R ; Richardson C ; Montalvo M ; Powers-McCormack B ; Forbes B ; Myers-Pigg A (2025): Levoglucosan data from five coastal streams impacted by the 2020 CZU Lightning Complex Fires, California, United States. River Corridor Hydro-biogeochemistry from Molecular to Multi-Basin Scales SFA, ESS-DIVE repository. Dataset. doi:10.15485/2543089 accessed via https://data.ess-dive.lbl.gov/datasets/doi:10.15485/2543089 on 2025-08-27
 
-> Note: The script is written in R-Markdown chunks that must be completed in order. 
+ - Barton R ; Richardson C ; Pae E ; Montalvo M ; Redmond M ; Zimmer M ; Wagner S (2025): Hydrology, rather than wildfire burn extent, determines post-fire organic and black carbon export from mountain rivers in central coastal California [Dataset], CUAHSI HydroShare, doi:10.4211/hs.26f08ef7fe344fcb9d3da45160b697fe accessed via https://doi.org/10.4211/hs.26f08ef7fe344fcb9d3da45160b697fe on 2025-08-27
