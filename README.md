@@ -1,6 +1,6 @@
 # Data and Scripts for _Rapid mobilization of levoglucosan distinctly contrasts black carbon dynamics in fire-affected watersheds in central coastal California_ 
 
-Submitted for Publication in L&O Letters
+Submitted for Publication in Geophysical Research Letters
 
 Contact [Riley Barton](mailto:rileybbarton@gmail.com) with any questions
 
