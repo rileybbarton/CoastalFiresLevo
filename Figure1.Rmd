@@ -1,0 +1,205 @@
+---
+title: "Figure1"
+output: html_document
+---
+
+add info here
+
+Install package if necessary
+```{r}
+install.packages("arcgislayers")
+install.packages("sf")
+install.packages("tmap")
+install.packages("ggplot2")
+install.packages("dplyr")
+install.packages("terra")
+```
+
+load package(s)
+```{r}
+library(arcgislayers)
+library(sf)
+library(tmap)
+library(ggplot2)
+library(dplyr)
+library(terra)
+```
+
+find and download shapefiles/rasters
+```{r}
+#California
+  #download as zip file
+    temp <- tempdir() #get temp directory to download zip to 
+    url <- "https://data.ca.gov/dataset/e212e397-1277-4df3-8c22-40721b095f33/resource/3db1e426-fb51-44f5-82d5-a54d7c6e188b/download/ca_state.zip" #location of zip file 
+    download.file(url, file.path(temp, "CA.zip"), mode="wb")
+    #unzip file
+    unzip(zipfile=file.path(temp, "CA.zip"), exdir=temp)
+    #load data 
+    ca <- st_read(file.path(temp,"CA_State.shp"))
+    
+#Burn severity from MTBS, downloaded on May-26-2026. Filters - Region: California, Year: 2020
+  burn_severity <- rast("gis_data/mtbs_2020/mtbs_CONUS_2020.tif")
+  
+#Sites
+  sites <- 
+```
+
+test to visualize the fires in CA
+```{r}
+ca <- st_transform(ca, crs(burn_severity)) #ensure same projection
+#crop
+fires_ca <- crop(burn_severity, vect(ca))
+fires_ca <- mask(fires_ca, vect(ca))
+
+#QUICK test map
+plot(fires_ca)
+plot(st_geometry(ca), add = TRUE, border = "black", lwd = 1)
+```
+
+
+
+Read spatial layers
+```{r}
+ca <- st_read("data/shapefiles/california.shp")
+burn_severity <- rast("data/fire/burn_severity.tif")
+fire_perimeter <- st_read("data/fire/fire_perimeter.shp")
+watersheds <- st_read("data/watersheds/watersheds.shp")
+sites <- st_read("data/sites/sampling_locations.shp")
+```
+
+```{r}
+workflow
+
+# VECTOR
+watersheds <- st_read(...)
+sites <- st_read(...)
+fire_perim <- st_read(...)
+
+# RASTER
+burn <- rast(...)
+
+# PROJECT
+target_crs <- "EPSG:3310"
+
+watersheds <- st_transform(watersheds, target_crs)
+sites <- st_transform(sites, target_crs)
+fire_perim <- st_transform(fire_perim, target_crs)
+
+burn <- project(burn, target_crs)
+```
+
+Reproject layers
+```{r}
+target_crs <- 3310   # California Albers
+
+ca <- st_transform(ca, target_crs)
+burn_severity <- project(burn_severity, "EPSG:3310")
+fire_perimeter <- st_transform(fire_perimeter, target_crs)
+watersheds <- st_transform(watersheds, target_crs)
+sites <- st_transform(sites, target_crs)
+```
+
+Crop to study area
+```{r}
+study_extent <- st_bbox(watersheds)
+```
+
+Visualize as a map
+```{r}
+tmap_mode("plot")
+
+map1 <- 
+  tm_shape(ca_crop) +
+  tm_polygons(col = "gray95", border.col = "gray70") +
+
+  tm_shape(burn_crop) +
+  tm_raster(
+    palette = "-YlOrRd",
+    title = "Burn Severity",
+    alpha = 0.8
+  ) +
+
+  tm_shape(fire_perimeter) +
+  tm_borders(col = "black", lwd = 2) +
+
+  tm_shape(watersheds) +
+  tm_borders(col = "dodgerblue4", lwd = 1.5) +
+
+  tm_shape(sites) +
+  tm_symbols(
+    col = "cyan",
+    size = 0.12,
+    border.col = "black"
+  ) +
+
+  tm_layout(
+    frame = FALSE,
+    legend.outside = TRUE,
+    legend.text.size = 0.8,
+    legend.title.size = 1,
+    fontfamily = "sans"
+  ) +
+
+  tm_compass(
+    type = "arrow",
+    position = c("left", "top")
+  ) +
+
+  tm_scale_bar(
+    position = c("left", "bottom")
+  )
+
+map1
+```
+
+Export high quality figure
+```{r}
+tmap_save(
+  map1,
+  "figures/study_site_map.png",
+  width = 8,
+  height = 6,
+  units = "in",
+  dpi = 600
+)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+    
+#step 0: load libraries------ 
+library(sbtools)
+
+#step 1: get wildfire data ------ 
+  #go to MTBS (https://burnseverity.cr.usgs.gov/viewer/?product=MTBS) to download historic fire data 
+  #select by watershed and select McKenzie in Oregon
+
+  #!!!! change to make name of file
+  #mtbs_loc <- file.path(fs::path_home(), "Downloads/", "Fire_data_bundles_cXE2AL4en0OeTkOTbc7c.zip")
+
+  #clean wildfire data 
+    clean_mtbs("data/input/MTBS-wildfires-mckenzie-basin.zip", save_loc="data/spatial-data/mtbs")
+    
+  #make a shapefile with all fire boundries
+    burn_bd <- list.files("data/spatial-data/mtbs", recursive = TRUE, full.names = TRUE, pattern ="burn_bndy.shp")
+    comb <- lapply(burn_bd, read_sf)
+    comb <- do.call(rbind, comb)
+    write_sf(comb, "data/spatial-data/mtbs/all-fires-burn-bndy.shp")
+    
+```
+
+Install package if necessary
+```{r}
+#install.packages("tidyverse")
+```
