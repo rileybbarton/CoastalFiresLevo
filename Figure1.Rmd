@@ -37,11 +37,25 @@ find and download shapefiles/rasters
     #load data 
     ca <- st_read(file.path(temp,"CA_State.shp"))
     
+#Fire Boundaries
+  #open file as GeoJSON
+    url <- paste0(
+      "https://services2.arcgis.com/qmhndvC947rDNl6t/arcgis/rest/services/",
+      "CZU_web_mercator/FeatureServer/0/query?",
+      "where=1%3D1&outFields=*&f=geojson"
+    )
+    fire_perimeter <- st_read(url)  
+    
 #Burn severity from MTBS, downloaded on May-26-2026. Filters - Region: California, Year: 2020
-  burn_severity <- rast("gis_data/mtbs_2020/mtbs_CONUS_2020.tif")
+  burn_severity <- rast("gis_data/mtbs_2020/mtbs_CONUS_2020.tif") #had to download from email
+  
+#Watershed Boundaries
+
   
 #Sites
-  sites <- 
+  sites <- read.csv("data/CoastalFires_CombinedData.csv") %>%
+    select(Watershed, Latitude, Longitude, Location_Change) %>%
+    distinct()
 ```
 
 test to visualize the fires in CA

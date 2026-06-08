@@ -126,9 +126,9 @@ desired_order <- c("Watershed", "Date", "Time", "time_since_fire_day", "Latitude
 CombinedData <- CombinedData[, desired_order]
 ```
 
-Create a csv file of the combined dataset:CoastalFires_CombinedData
+Create and save a csv file of the combined dataset:CoastalFires_CombinedData
 ```{r}
 write.csv(CombinedData, 
-          file = file.path("CoastalFires_CombinedData.csv"), 
+          file = file.path("data/CoastalFires_CombinedData.csv"), 
           row.names = FALSE)  #Prevents writing row numbers
 ```
