@@ -199,4 +199,103 @@ DailyConc <- DailyFlow %>%
   })
 ```
 
+Get Daily Loads
+```{r}
+DailyLoads <- DailyConc %>%
+  filter(!is.na(Levo_interp),
+         !is.na(BPCA_interp)) %>%
+  mutate(
+    Levo_g_day = Q_mean * Levo_interp * 86400,
+    BPCA_g_day = Q_mean * BPCA_interp * 86400
+  )
+```
+
+Get Cumulative Export
+```{r}
+DailyLoads <- DailyLoads %>%
+  group_by(Watershed) %>%
+  arrange(Date) %>%
+  mutate(
+    Levo_cumulative_Mg = cumsum(Levo_g_day)/1e6,
+    BPCA_cumulative_Mg = cumsum(BPCA_g_day)/1e6
+  )
+```
+
+Revised estimate
+```{r}
+DailyLoads %>%
+  group_by(Watershed) %>%
+  summarize(
+    Levo_export_Mg = max(Levo_cumulative_Mg),
+    BPCA_export_Mg = max(BPCA_cumulative_Mg)
+  )
+```
+
+Calc Cum Exp & Plot
+```{r}
+# LEVO
+
+DailyLoads <- DailyLoads %>%
+  group_by(Watershed) %>%
+  mutate(
+    Levo_fraction = Levo_cumulative_Mg /
+      max(Levo_cumulative_Mg),
+
+    BPCA_fraction = BPCA_cumulative_Mg /
+      max(BPCA_cumulative_Mg)
+  )
+
+ggplot(DailyLoads,
+       aes(Date, Levo_fraction, color=Watershed)) +
+  geom_line(linewidth=1) +
+  labs(
+    y="Fraction of cumulative levoglucosan export",
+    x=NULL
+  )
+
+#BPCA
+ggplot(DailyLoads,
+       aes(Date, BPCA_fraction, color=Watershed)) +
+  geom_line(linewidth=1) +
+  labs(
+    y="Fraction of cumulative levoglucosan export",
+    x=NULL
+  )
+
+```
+Not fraction
+```{r}
+ggplot(DailyLoads, aes(Date, Levo_cumulative_Mg, color = Watershed)) +
+  geom_line() +
+  geom_vline(
+    xintercept = as.numeric(as.Date(c(
+      "2020-11-17",
+      "2020-11-18",
+      "2021-01-04",
+      "2021-01-27",
+      "2021-01-28"
+    ))),
+    linetype = "dashed"
+  )
+```
+
+Get Export Timing
+```{r}
+ExportTiming_Levo <- DailyLoads %>%
+  group_by(Watershed) %>%
+  summarize(
+    total_levo = max(Levo_cumulative_Mg),
+    day_50 = Date[min(which(Levo_cumulative_Mg >= 0.5*total_levo))],
+    day_90 = Date[min(which(Levo_cumulative_Mg >= 0.9*total_levo))]
+  )
+
+ExportTiming_BPCA <- DailyLoads %>%
+  group_by(Watershed) %>%
+  summarize(
+    total_BPCA = max(BPCA_cumulative_Mg),
+    day_50 = Date[min(which(BPCA_cumulative_Mg >= 0.5*total_BPCA))],
+    day_90 = Date[min(which(BPCA_cumulative_Mg >= 0.9*total_BPCA))]
+  )
+```
+
 
