@@ -71,6 +71,7 @@ CombinedData$B5CA_micro_mol_C_per_L <- CombinedData$dB5CA_nano_mol_per_L * 11 / 
 
 #Levoglucosan is in micro grams per liter. Divide by molecular weight of levoglucosan to get units into micro moles of levoglucosan per liter (uM). Then multiply by number of C atoms in the levoglucosan molecule to convert units to uM-C.
 CombinedData$Levo_micro_mol_C_per_L <- CombinedData$Levoglucosan_microgram_per_L / 162.14 * 6 #levoglucosan has six C atoms in its structure
+CombinedData$stdev_Levo_micro_mol_C_per_L <- CombinedData$stdev_Levoglucosan_microgram_per_L / 162.14 * 6 
 ```
 
 PyC-to-DOC ratios: calculate levoclucosan-dissolved organic carbon and [B6CA+B5CA]-dissolved organic carbon ratios
@@ -110,7 +111,7 @@ Re-arrange column order
 ```{r}
 # Specify the desired column order
 desired_order <- c("Watershed", "Date", "Time", "time_since_fire_day", "Latitude", "Longitude", "Location_Change",
-                   "Discharge_cms", "DOC_micro_mol_C_per_L", "Levo_micro_mol_C_per_L", "B6CA_micro_mol_C_per_L",
+                   "Discharge_cms", "DOC_micro_mol_C_per_L", "Levo_micro_mol_C_per_L", "stdev_Levo_micro_mol_C_per_L",   "B6CA_micro_mol_C_per_L",
                    "B5CA_micro_mol_C_per_L", "B6CA_and_B5CA_micro_mol_C_per_L", "dB6CA_B5CA",
                    "Levo_DOC_percent", "BPCA_DOC_percent", "DBC_micro_mol_C_per_L", "DBC_DOC_percent",
                    "a254_per_m", "SUVA254_L_per_mgC_per_m", 
