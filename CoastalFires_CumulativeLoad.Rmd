@@ -1,0 +1,202 @@
+---
+title: "CoastalFires_CumulativeExport"
+author: "rbb"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+Packages
+```{r}
+library(dplyr)
+library(lubridate)
+library(tidyr)
+```
+
+
+Get Data
+```{r}
+#From CUAHSI Hydroshare
+DischargeData <- readr::read_csv("https://www.hydroshare.org/resource/26f08ef7fe344fcb9d3da45160b697fe/data/contents/CoastalFires_DischargeData.csv")
+
+#From GitHub
+CombinedData <- readr::read_csv("data/CoastalFires_CombinedData.csv")
+```
+
+Exclude samples that were taken at a different location. 
+```{r}
+#Scott Creek flooded during the events of January 27-28th, 2021. Samples were collected at a downstream lagoon site. However, due to this the data collected does not accurately reflect that at the sample site. As such authors of the associated manuscript have excluded it from all data analysis and figure creation.
+CombinedData <- CombinedData %>%
+  filter(Location_Change != "Y")
+```
+
+
+Make sure dates are right
+```{r}
+CombinedData <- CombinedData %>%
+  mutate(
+    DateTime = as.POSIXct(Date, tz = "America/Los_Angeles") +
+      if_else(is.na(Time),
+              12*60*60,
+              as.numeric(Time)),
+    DateTime = format(DateTime, "%Y-%m-%d %H:%M")
+  )
+```
+
+Get data for cumulative export
+```{r}
+ConcData <- CombinedData %>%
+  select(Watershed, DateTime, Levo_micro_mol_C_per_L, B6CA_and_B5CA_micro_mol_C_per_L)
+
+#Fix watershed names to match discharge data
+ConcData <- ConcData %>%
+  mutate(Watershed = recode(Watershed,
+                            "Laguna Creek" = "LAG",
+                            "San Lorenzo River" = "SAN",
+                            "Pescadero Creek" = "PESC",
+                            "Majors Creek" = "MAJ",
+                            "Scott Creek" = "SCT"))
+#Make sure date is correct format
+ConcData <- ConcData %>%
+  mutate(
+    DateTime = as.POSIXct(DateTime,
+                          format = "%Y-%m-%d %H:%M",
+                          tz = "UTC")
+  )
+```
+
+Convert concentrations
+```{r}
+#to get gC from uM-C, multiply by 0.012011
+ConcData$Levo_mg_C_per_L <- ConcData$Levo_micro_mol_C_per_L * 0.012011
+ConcData$BPCA_mg_C_per_L <- ConcData$B6CA_and_B5CA_micro_mol_C_per_L * 0.012011
+
+#remove unneccessary columns
+ConcData <- ConcData %>%
+  select(-Levo_micro_mol_C_per_L,
+         -B6CA_and_B5CA_micro_mol_C_per_L)
+```
+
+Get Discharge set
+```{r}
+SAN <- DischargeData %>%
+  transmute(
+    Watershed = "SAN",
+    DateTime = parse_date_time(SAN_DateTime,
+                               orders = c("mdy HM", "mdy"),
+                               tz = "UTC"),
+    Flow = SAN_Flow_cms
+  )
+
+PESC <- DischargeData %>%
+  transmute(
+    Watershed = "PESC",
+    DateTime = parse_date_time(PESC_DateTime,
+                               orders = c("mdy HM", "mdy"),
+                               tz = "UTC"),
+    Flow = PESC_Flow_cms
+  )
+
+LAG <- DischargeData %>%
+  transmute(
+    Watershed = "LAG",
+    DateTime = parse_date_time(LAG_DateTime,
+                               orders = c("mdy HM", "mdy"),
+                               tz = "UTC"),
+    Flow = LAG_Flow_cms
+  )
+
+MAJ <- DischargeData %>%
+  transmute(
+    Watershed = "MAJ",
+    DateTime = parse_date_time(MAJ_DateTime,
+                               orders = c("mdy HM", "mdy"),
+                               tz = "UTC"),
+    Flow = MAJ_Flow_cms
+  )
+
+SCT <- DischargeData %>%
+  transmute(
+    Watershed = "SCT",
+    DateTime = parse_date_time(SCT_DateTime,
+                               orders = c("mdy HM", "mdy"),
+                               tz = "UTC"),
+    Flow = SCT_Flow_cms
+  )
+
+FlowData <- bind_rows(SAN, PESC, LAG, MAJ, SCT)
+```
+
+Remove NAs from FlowData
+```{r}
+FlowData <- FlowData %>%
+  filter(!is.na(DateTime),
+         !is.na(Flow))
+
+#check it worked
+FlowData %>%
+  group_by(Watershed) %>%
+  summarize(
+    missing_dates = sum(is.na(DateTime)),
+    start = min(DateTime),
+    end = max(DateTime),
+    n=n()
+  )
+```
+
+
+Convert to daily discharge (highest resolution for Scott Creek)
+```{r}
+DailyFlow <- FlowData %>%
+  mutate(Date = as.Date(DateTime)) %>%
+  filter(Date >= as.Date("2020-10-07"),
+         Date <= as.Date("2021-05-02")) %>%
+  group_by(Watershed, Date) %>%
+  summarize(
+    Q_mean = mean(Flow, na.rm=TRUE),
+    .groups="drop"
+  )
+
+#check
+DailyFlow %>%
+  count(Watershed)
+```
+
+Get Daily Concentrations
+```{r}
+DailyConc <- DailyFlow %>%
+  group_by(Watershed) %>%
+  group_modify(~{
+
+    ws <- .y$Watershed
+
+    samples <- ConcData %>%
+      filter(Watershed == ws) %>%
+      arrange(DateTime)
+
+    if(nrow(samples) < 2){
+      .x$Levo_interp <- NA
+      .x$BPCA_interp <- NA
+      return(.x)
+    }
+
+    .x$Levo_interp <-
+      approx(
+        x = as.numeric(samples$DateTime),
+        y = samples$Levo_mg_C_per_L,
+        xout = as.numeric(as.POSIXct(.x$Date)),
+        rule = 1
+      )$y
+
+    .x$BPCA_interp <-
+      approx(
+        x = as.numeric(samples$DateTime),
+        y = samples$BPCA_mg_C_per_L,
+        xout = as.numeric(as.POSIXct(.x$Date)),
+        rule = 1
+      )$y
+
+    .x
+  })
+```
+
+
