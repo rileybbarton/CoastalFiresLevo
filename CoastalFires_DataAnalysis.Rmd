@@ -24,11 +24,13 @@ library(Cairo)
 library(ggrepel)
 library(vegan)
 library(tidyverse)
+library(dplyr)
+library(purrr)
 ```
 
 Read data file
 ```{r}
-CombinedData <- readr::read_csv(file.path("CoastalFires_CombinedData.csv"))
+CombinedData <- readr::read_csv(file.path("data/CoastalFires_CombinedData.csv"))
 ``` 
 
 Exclude samples that were taken at a different location. 
@@ -202,6 +204,232 @@ spearman_df_time_since_fire <- do.call(rbind, spearman_results_time_since_fire)
 # Print results
 print(spearman_df_time_since_fire)
 ```
+
+Bootstrap LOESS predictions for time_since_fire relationships
+```{r}
+# Define x-grid for prediction
+x_grid <- seq(
+  min(CombinedData$time_since_fire_day, na.rm = TRUE),
+  max(CombinedData$time_since_fire_day, na.rm = TRUE),
+  length.out = 200
+)
+
+# Bootstrap LOESS
+set.seed(123)
+
+boot_loess <- map_dfr(
+  1:1000,
+  function(i) {
+    
+    boot_data <- CombinedData %>%
+      sample_frac(size = 1, replace = TRUE)
+    
+    model <- loess(
+      Levo_micro_mol_C_per_L ~ time_since_fire_day,
+      data = boot_data,
+      span = 0.75
+    )
+    
+    tibble(
+      x = x_grid,
+      y = predict(
+        model,
+        newdata = data.frame(time_since_fire_day = x_grid)
+      ),
+      iteration = i
+    )
+  }
+)
+
+# Summarize confidence interval
+boot_ci <- boot_loess %>%
+  group_by(x) %>%
+  summarize(
+    fit = median(y, na.rm = TRUE),
+    lower = quantile(y, 0.025, na.rm = TRUE),
+    upper = quantile(y, 0.975, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
+
+
+Figure for spearman's rank - time-since-fire
+```{r}
+#Watershed colors and shapes
+CombinedData <- CombinedData %>%
+  mutate(
+    Watershed = recode(
+      Watershed,
+      "San Lorenzo River" = "SAN",
+      "Pescadero Creek" = "PESC",
+      "Majors Creek" = "MAJ",
+      "Laguna Creek" = "LAG",
+      "Scott Creek" = "SCT"
+    )
+  )
+ws_cols <- c(
+  SAN  = "#FBF9A2",
+  PESC = "#FFCF55",
+  MAJ  = "#FF7410",
+  LAG  = "#EA4412",
+  SCT  = "#A00000"
+)
+
+ws_shapes <- c(
+  SAN  = 23,
+  PESC = 24,
+  MAJ  = 22,
+  LAG  = 21,
+  SCT  = 25
+)
+
+#to determine legend order
+CombinedData <- CombinedData %>%
+  mutate(
+    Watershed = factor(
+      Watershed,
+      levels = c("SAN", "PESC", "MAJ", "LAG", "SCT")
+    )
+  )
+
+#prelim plot
+ggplot(
+  CombinedData,
+  aes(
+    x = time_since_fire_day,
+    y = Levo_micro_mol_C_per_L,
+    fill = Watershed,
+    shape = Watershed
+  )
+) +
+  geom_ribbon(
+    data = boot_ci,
+    aes(
+      x = x,
+      ymin = lower,
+      ymax = upper
+    ),
+    inherit.aes = FALSE,
+      fill = "grey50",
+      alpha = 0.25
+    ) +
+
+  geom_line(
+    data = boot_ci,
+    aes(
+      x = x,
+      y = fit
+    ),
+    inherit.aes = FALSE,
+    color = "black",
+    linewidth = 1
+  ) +
+
+  geom_point(
+    size = 4,
+    color = "black",
+    stroke = 0.8
+  ) +
+
+  scale_fill_manual(values = ws_cols) +
+  scale_shape_manual(values = ws_shapes) +
+
+  labs(
+    x = "Time since fire (days)",
+    y = "Levoglucosan (µmol C L⁻¹)"
+  ) +
+
+  theme_classic(base_size = 13) +
+
+  theme(
+    legend.title = element_blank(),
+    axis.text = element_text(color = "black")
+  )
+```
+
+Attempt at funciton
+```{r}
+#function
+make_time_since_fire_plot <- function(data, y_var, y_label, y_max) {
+  
+  ggplot(
+    data,
+    aes(
+      x = time_since_fire_day,
+      y = {{ y_var }},
+      fill = Watershed,
+      shape = Watershed
+    )
+  ) +
+    
+    geom_point(
+      size = 4,
+      color = "black",
+      stroke = 0.8
+    ) +
+    
+    scale_fill_manual(
+      values = ws_cols,
+      breaks = c("SAN", "PESC", "MAJ", "LAG", "SCT")
+    ) +
+    
+    scale_shape_manual(
+      values = ws_shapes,
+      breaks = c("SAN", "PESC", "MAJ", "LAG", "SCT")
+    ) +
+    
+    coord_cartesian(
+      xlim = c(0, NA),
+      ylim = c(0, y_max)
+    ) +
+    
+    labs(
+      x = "Time since fire (days)",
+      y = y_label
+    ) +
+    
+    theme_classic(base_size = 13) +
+    
+    theme(
+      legend.title = element_blank(),
+      axis.text = element_text(color = "black")
+    )
+}
+
+#plots
+##levoglucosan
+plot_levo_time <- make_time_since_fire_plot(
+  CombinedData,
+  Levo_micro_mol_C_per_L,
+  "Levoglucosan (µmol C L⁻¹)",
+  y_max = 3
+)
+
+##BCPAs
+plot_bpca_time <- make_time_since_fire_plot(
+  CombinedData,
+  B6CA_and_B5CA_micro_mol_C_per_L,
+  "BPCA (µmol C L⁻¹)",
+  y_max = 12
+)
+
+##Levo:DOC
+plot_levodoc_time <- make_time_since_fire_plot(
+  CombinedData,
+  Levo_DOC_percent,
+  "Levo:DOC (%)",
+  y_max = 1.5
+)
+
+##BPCA:DOC
+plot_bpcadoc_time <- make_time_since_fire_plot(
+  CombinedData,
+  BPCA_DOC_percent,
+  "BPCA:DOC (%)",
+  y_max = 1.5
+)
+```
+
 
 Spearman's Rank: Discharge
 ```{r}
