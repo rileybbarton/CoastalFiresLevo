@@ -31,7 +31,6 @@ CombinedData <- CombinedData %>%
   filter(Location_Change != "Y")
 ```
 
-
 Make sure dates are right
 ```{r}
 CombinedData <- CombinedData %>%
@@ -144,7 +143,6 @@ FlowData %>%
     n=n()
   )
 ```
-
 
 Convert to daily discharge (highest resolution for Scott Creek)
 ```{r}
