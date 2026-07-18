@@ -11,6 +11,7 @@ library(dplyr)
 library(lubridate)
 library(tidyr)
 library(patchwork)
+library(ggplot2)
 ```
 
 
@@ -61,7 +62,7 @@ ConcData <- ConcData %>%
   mutate(
     DateTime = as.POSIXct(DateTime,
                           format = "%Y-%m-%d %H:%M",
-                          tz = "UTC")
+                          tz = "America/Los_Angeles")
   )
 ```
 
@@ -84,7 +85,7 @@ SAN <- DischargeData %>%
     Watershed = "SAN",
     DateTime = parse_date_time(SAN_DateTime,
                                orders = c("mdy HM", "mdy"),
-                               tz = "UTC"),
+                               tz = "America/Los_Angeles"),
     Flow = SAN_Flow_cms
   )
 
@@ -93,7 +94,7 @@ PESC <- DischargeData %>%
     Watershed = "PESC",
     DateTime = parse_date_time(PESC_DateTime,
                                orders = c("mdy HM", "mdy"),
-                               tz = "UTC"),
+                               tz = "America/Los_Angeles"),
     Flow = PESC_Flow_cms
   )
 
@@ -102,7 +103,7 @@ LAG <- DischargeData %>%
     Watershed = "LAG",
     DateTime = parse_date_time(LAG_DateTime,
                                orders = c("mdy HM", "mdy"),
-                               tz = "UTC"),
+                               tz = "America/Los_Angeles"),
     Flow = LAG_Flow_cms
   )
 
@@ -111,7 +112,7 @@ MAJ <- DischargeData %>%
     Watershed = "MAJ",
     DateTime = parse_date_time(MAJ_DateTime,
                                orders = c("mdy HM", "mdy"),
-                               tz = "UTC"),
+                               tz = "America/Los_Angeles"),
     Flow = MAJ_Flow_cms
   )
 
@@ -120,7 +121,7 @@ SCT <- DischargeData %>%
     Watershed = "SCT",
     DateTime = parse_date_time(SCT_DateTime,
                                orders = c("mdy HM", "mdy"),
-                               tz = "UTC"),
+                               tz = "America/Los_Angeles"),
     Flow = SCT_Flow_cms
   )
 
@@ -185,7 +186,8 @@ DailyConc <- DailyFlow %>%
 
     samples <- ConcData %>%
       filter(Watershed == ws) %>%
-      arrange(DateTime)
+      arrange(DateTime) %>%
+      mutate(Date = as.Date(DateTime))
 
     if(nrow(samples) < 2){
       .x$Levo_interp <- NA
@@ -195,20 +197,21 @@ DailyConc <- DailyFlow %>%
 
     .x$Levo_interp <-
       approx(
-        x = as.numeric(samples$DateTime),
-        y = samples$Levo_mg_C_per_L,
-        xout = as.numeric(as.POSIXct(.x$Date)),
-        rule = 1
-      )$y
+          x = as.numeric(samples$Date),
+          y = samples$Levo_mg_C_per_L,
+          xout = as.numeric(.x$Date),
+          method = "linear",
+          rule = 1 #only interpolate within sampling period
+      )$y 
 
     .x$BPCA_interp <-
       approx(
-        x = as.numeric(samples$DateTime),
-        y = samples$BPCA_mg_C_per_L,
-        xout = as.numeric(as.POSIXct(.x$Date)),
-        rule = 1
-      )$y
-
+          x = as.numeric(samples$Date),
+          y = samples$BPCA_mg_C_per_L,
+          xout = as.numeric(.x$Date),
+          method = "linear",
+          rule = 1 #only interpolate within sampling period
+      )$y 
     .x
   })
 ```
@@ -245,38 +248,109 @@ DailyLoads %>%
   )
 ```
 
-Calc Cum Exp & Plot
+Redo Plots
 ```{r}
-# LEVO
-
-DailyLoads <- DailyLoads %>%
+#Make data for plot in long format
+PlotData <- DailyLoads %>%
   group_by(Watershed) %>%
   mutate(
-    Levo_fraction = Levo_cumulative_Mg /
-      max(Levo_cumulative_Mg),
-
-    BPCA_fraction = BPCA_cumulative_Mg /
-      max(BPCA_cumulative_Mg)
+    Levo_fraction = Levo_cumulative_Mg / max(Levo_cumulative_Mg),
+    BPCA_fraction = BPCA_cumulative_Mg / max(BPCA_cumulative_Mg)
+  ) %>%
+  select(Date, Watershed, Levo_fraction, BPCA_fraction) %>%
+  pivot_longer(
+    cols = c(Levo_fraction, BPCA_fraction),
+    names_to = "Compound",
+    values_to = "Fraction"
+  ) %>%
+  mutate(
+    Compound = recode(
+      Compound,
+      Levo_fraction = "A) Levoglucosan",
+      BPCA_fraction = "B) B6CA + B5CA"
+    )
   )
 
-ggplot(DailyLoads,
-       aes(Date, Levo_fraction, color=Watershed)) +
-  geom_line(linewidth=1) +
+#Define color scheme
+ws_cols <- c(
+  SAN  = "#D9C84A", #orignial color = "#FBF9A2"
+  PESC = "#FFCF55",
+  MAJ  = "#FF7410",
+  LAG  = "#EA4412",
+  SCT  = "#A00000"
+)
+
+#Set order for legend
+PlotData <- PlotData %>%
+  mutate(
+    Watershed = factor(
+      Watershed,
+      levels = c("SAN", "PESC", "MAJ", "LAG", "SCT")
+    )
+  )
+
+#Plot
+ggplot(PlotData,
+       aes(Date, Fraction,
+           color = Watershed)) +
+
+  geom_line(linewidth = 1.3) +
+
+  facet_wrap(~Compound,
+             ncol = 1,
+             axes = "all") +
+
+  scale_color_manual(values = ws_cols) +
+
+  scale_y_continuous(
+    limits = c(0,1),
+    breaks = seq(0,1,0.25),
+    expand = c(0,0)
+  ) +
+
+  scale_x_date(
+    date_breaks = "1 month",
+    date_labels = "%b"
+  ) +
+
   labs(
-    y="Fraction of cumulative levoglucosan export",
-    x=NULL
-  )
+    x = NULL,
+    y = "Fraction of cumulative export"
+  ) +
 
-#BPCA
-ggplot(DailyLoads,
-       aes(Date, BPCA_fraction, color=Watershed)) +
-  geom_line(linewidth=1) +
-  labs(
-    y="Fraction of cumulative BPCA export",
-    x=NULL
-  )
+  # geom_vline(
+  #   xintercept = as.Date(c(
+  #     "2020-10-07",
+  #     "2020-11-17",
+  #     "2020-11-18",
+  #     "2020-12-11",
+  #     "2020-12-13",
+  #     "2021-01-27",
+  #     "2021-01-28",
+  #     "2021-02-02",
+  #     "2021-03-18",
+  #     "2021-05-02"
+  #   )),
+  #   linetype = "dashed",
+  #   color = "grey70",
+  #   linewidth = 0.5
+  # ) +
+  
+theme_classic(base_size = 13) +
 
+theme(
+  panel.background = element_rect(fill = "white", colour = NA),
+  plot.background  = element_rect(fill = "white", colour = NA),
+  strip.background = element_blank(),
+  strip.text = element_text(
+    face = "bold",
+    hjust = 0
+  ),
+  axis.text.x = element_text(color = "black"),
+  axis.ticks.x = element_line(color = "black")
+)
 ```
+
 Not fraction
 ```{r}
 ggplot(DailyLoads, aes(Date, Levo_cumulative_Mg, color = Watershed)) +
