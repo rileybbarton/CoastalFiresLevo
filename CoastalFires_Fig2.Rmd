@@ -5,12 +5,23 @@ date: "2026-07-09"
 output: html_document
 ---
 
+Install necessary packages (run once if necessary)
+```{r}
+# install.packages("dplyr")
+# install.packages("lubridate")
+# install.packages("tidyr")
+# install.packages("cowplot")
+# install.packages("ggplot2")
+```
+
 Packages
 ```{r}
 library(dplyr)
 library(lubridate)
 library(tidyr)
 library(patchwork)
+library(cowplot)
+library(grid)
 ```
 
 Get Data
@@ -143,6 +154,659 @@ FlowData %>%
     n=n()
   )
 ```
+
+Scaling factor
+```{r}
+# ============================================================
+# Prepare flow for plotting
+# ============================================================
+
+FlowData <- FlowData %>%
+  mutate(
+    log_flow = log10(Flow)
+  )
+
+
+# ============================================================
+# Common axis scaling for ALL watersheds
+# ============================================================
+
+levo_axis_max <- 2.5
+
+# Force common discharge axis:
+# 0.01 to 100 m3/s
+flow_axis_min <- log10(0.01)
+flow_axis_max <- log10(100)
+
+# Convert discharge range into levoglucosan axis range
+scale_factor <- levo_axis_max /
+  (flow_axis_max - flow_axis_min)
+
+scale_factor
+```
+Color scheme
+```{r}
+ws_cols <- c(
+  SAN  = "#FBF9A2",
+  PESC = "#FFCF55",
+  MAJ  = "#FF7410",
+  LAG  = "#EA4412",
+  SCT  = "#A00000"
+)
+
+ws_shapes <- c(
+  SAN  = 23,
+  PESC = 24,
+  MAJ  = 22,
+  LAG  = 21,
+  SCT  = 25
+)
+```
+
+
+Function
+```{r}
+make_levo_flow_plot <- function(watershed_name,
+                                point_fill,
+                                point_shape,
+                                panel_label,
+                                show_x_axis = TRUE) {
+  
+  levo_plot <- ConcData %>%
+    filter(
+      Watershed == watershed_name,
+      !is.na(Levo_micro_mol_C_per_L)
+    ) %>%
+    mutate(
+      Date = as.POSIXct(DateTime),
+      Levo_error = mean_levo_sd
+    )
+  
+  
+  flow_plot <- FlowData %>%
+    filter(
+      Watershed == watershed_name
+    )
+  
+  
+  ggplot() +
+    
+    geom_line(
+      data = flow_plot,
+      aes(
+        x = DateTime,
+        y = (log_flow - flow_axis_min) * scale_factor
+      ),
+      color = "#156082",
+      linewidth = 1.2
+    ) +
+    
+    
+    geom_errorbar(
+      data = levo_plot,
+      aes(
+        x = Date,
+        ymin = Levo_micro_mol_C_per_L - Levo_error,
+        ymax = Levo_micro_mol_C_per_L + Levo_error
+      ),
+      width = 0,
+      linewidth = 0.4
+    ) +
+    
+    geom_line(
+      data = levo_plot,
+      aes(
+        x = Date,
+        y = Levo_micro_mol_C_per_L
+      ),
+      linetype = "dotted",
+      linewidth = 0.5,
+      color = "black"
+    ) +
+    
+    geom_point(
+      data = levo_plot,
+      aes(
+        x = Date,
+        y = Levo_micro_mol_C_per_L
+      ),
+      shape = point_shape,
+      size = 4,
+      fill = point_fill,
+      color = "black",
+      stroke = 0.8
+    ) +
+    
+    
+    scale_y_continuous(
+      limits = c(0, levo_axis_max),
+      
+      name = expression(
+        "Levoglucosan ("*mu*"M-C)"
+      ),
+      
+      sec.axis = sec_axis(
+        ~ . / scale_factor + flow_axis_min,
+        breaks = log10(c(0.01, 0.1, 1, 10, 100)),
+        labels = c(
+          "0.01",
+          "0.1",
+          "1",
+          "10",
+          "100"
+        ),
+        name = expression(
+          "Stream Flow (m"^3*" s"^{-1}*")"
+        )
+      )
+    ) +
+    
+    
+    scale_x_datetime(
+      name = NULL
+    ) +
+    
+    annotate(
+      "text",
+      x = -Inf,
+      y = Inf,
+      label = panel_label,
+      hjust = -0.5,
+      vjust = 1.5,
+      fontface = "bold",
+      size = 5
+    ) +
+    
+    theme_bw(base_size = 12) +
+    
+    theme(
+      panel.grid = element_blank()
+    )
+}
+```
+
+Plots
+```{r}
+SAN_plot <- make_levo_flow_plot(
+  "SAN",
+  point_fill = ws_cols["SAN"],
+  point_shape = ws_shapes["SAN"],
+  panel_label = "A)",
+  show_x_axis = TRUE
+)
+
+PESC_plot <- make_levo_flow_plot(
+  "PESC",
+  point_fill = ws_cols["PESC"],
+  point_shape = ws_shapes["PESC"],
+  panel_label = "B)",
+  show_x_axis = TRUE
+)
+
+MAJ_plot <- make_levo_flow_plot(
+  "MAJ",
+  point_fill = ws_cols["MAJ"],
+  point_shape = ws_shapes["MAJ"],
+  panel_label = "C)",
+  show_x_axis = TRUE
+)
+
+LAG_plot <- make_levo_flow_plot(
+  "LAG",
+  point_fill = ws_cols["LAG"],
+  point_shape = ws_shapes["LAG"],
+  panel_label = "D)",
+  show_x_axis = TRUE
+)
+
+SCT_plot <- make_levo_flow_plot(
+  "SCT",
+  point_fill = ws_cols["SCT"],
+  point_shape = ws_shapes["SCT"],
+  panel_label = "E)",
+  show_x_axis = TRUE
+)
+```
+
+Final Plot
+```{r}
+#combine plots
+final_plot <- plot_grid(
+  SAN_plot,  LAG_plot,
+  PESC_plot, SCT_plot,
+  MAJ_plot,  NULL,
+  ncol = 2,
+  align = "hv",
+  axis = "tblr"
+)
+
+#Add Date label for x-axis
+final_plot <- plot_grid(
+  final_plot,
+  ggdraw() + draw_label("Date", size = 12),
+  ncol = 1,
+  rel_heights = c(1, 0.05)
+)
+```
+
+Save Final Plot
+```{r}
+ggsave(
+  filename = "figures/Fig2_Levo_StreamFlow.tiff",
+  plot = final_plot,
+  device = "tiff",
+  dpi = 600,
+  width = 10,
+  height = 10,
+  units = "in",
+  compression = "lzw",
+  bg = "white"
+)
+```
+
+Playing with legend
+```{r}
+legend_df <- data.frame(
+  Watershed = c(
+    "San Lorenzo River (SAN)",
+    "Pescadero Creek (PESC)",
+    "Majors Creek (MAJ)",
+    "Laguna Creek (LAG)",
+    "Scott Creek (SCT)"
+  ),
+  x = 1:5,
+  y = 1
+)
+
+legend_cols <- c(
+  "San Lorenzo River (SAN)" = "#FBF9A2",
+  "Pescadero Creek (PESC)" = "#FFCF55",
+  "Majors Creek (MAJ)" = "#FF7410",
+  "Laguna Creek (LAG)" = "#EA4412",
+  "Scott Creek (SCT)" = "#A00000"
+)
+
+legend_shapes <- c(
+  "San Lorenzo River (SAN)" = 23,
+  "Pescadero Creek (PESC)" = 24,
+  "Majors Creek (MAJ)" = 22,
+  "Laguna Creek (LAG)" = 21,
+  "Scott Creek (SCT)" = 25
+)
+
+legend_plot <- ggplot(
+  legend_df,
+  aes(
+    x = x,
+    y = y,
+    fill = Watershed,
+    shape = Watershed
+  )
+) +
+
+  # watershed symbols
+  geom_point(
+    size = 5,
+    color = "black",
+    stroke = 0.8
+  ) +
+
+  # discharge line example
+  annotate(
+    "segment",
+    x = 0.4,
+    xend = 0.8,
+    y = 0.5,
+    yend = 0.5,
+    color = "#156082",
+    linewidth = 1.2
+  ) +
+
+  annotate(
+    "text",
+    x = 1.2,
+    y = 0.5,
+    label = "Discharge",
+    hjust = 0,
+    size = 4
+  ) +
+
+  scale_fill_manual(
+    values = legend_cols,
+    name = NULL
+  ) +
+
+  scale_shape_manual(
+    values = legend_shapes,
+    name = NULL
+  ) +
+
+  theme_void() +
+
+  theme(
+    legend.position = "right"
+  )
+
+#extract legend
+legend <- cowplot::get_legend(legend_plot)
+
+#final plot with legend
+final_with_legend <- ggdraw(final_plot) +
+
+  draw_grob(
+    legend,
+    x = 0.55,   # horizontal position
+    y = 0.05,   # vertical position
+    width = 0.35,
+    height = 0.3
+  )
+
+ggsave(
+  filename = "figures/Fig2_wLegend.tiff",
+  plot = final_with_legend,
+  device = "tiff",
+  dpi = 600,
+  width = 10,
+  height = 10,
+  units = "in",
+  compression = "lzw",
+  bg = "white"
+)
+```
+
+Fig 3 with legend
+```{r}
+legend_df <- data.frame(
+  Watershed = c(
+    "San Lorenzo River (SAN)",
+    "Pescadero Creek (PESC)",
+    "Majors Creek (MAJ)",
+    "Laguna Creek (LAG)",
+    "Scott Creek (SCT)"
+  )
+)
+
+# force legend order to match color scheme
+legend_df$Watershed <- factor(
+  legend_df$Watershed,
+  levels = c(
+    "San Lorenzo River (SAN)",
+    "Pescadero Creek (PESC)",
+    "Majors Creek (MAJ)",
+    "Laguna Creek (LAG)",
+    "Scott Creek (SCT)"
+  )
+)
+
+legend_cols <- c(
+  "San Lorenzo River (SAN)" = "#FBF9A2",
+  "Pescadero Creek (PESC)" = "#FFCF55",
+  "Majors Creek (MAJ)" = "#FF7410",
+  "Laguna Creek (LAG)" = "#EA4412",
+  "Scott Creek (SCT)" = "#A00000"
+)
+
+legend_shapes <- c(
+  "San Lorenzo River (SAN)" = 23,
+  "Pescadero Creek (PESC)" = 24,
+  "Majors Creek (MAJ)" = 22,
+  "Laguna Creek (LAG)" = 21,
+  "Scott Creek (SCT)" = 25
+)
+
+
+# create legend plot
+watershed_legend_plot <- ggplot(
+  legend_df,
+  aes(
+    x = 1,
+    y = Watershed,
+    fill = Watershed,
+    shape = Watershed
+  )
+) +
+  geom_point(
+    size = 4,
+    color = "black",
+    stroke = 0.8
+  ) +
+  scale_fill_manual(
+    values = legend_cols,
+    name = "Watershed"
+  ) +
+  scale_shape_manual(
+    values = legend_shapes,
+    name = "Watershed"
+  ) +
+  theme_void() +
+  theme(
+    legend.position = "right",
+    legend.title = element_text(face = "bold"),
+    legend.text = element_text(size = 10)
+  )
+
+
+# extract legend
+watershed_legend <- get_legend(watershed_legend_plot)
+
+# Add watershed legend as inset
+final_with_legend <- ggdraw() +
+  
+  # original figure
+  draw_plot(final_plot) +
+  
+  # movable watershed legend
+  draw_plot(
+    watershed_legend,
+    x = 0.60,   # move left/right
+    y = 0.1,   # move up/down
+    width = 0.30,
+    height = 0.25
+  )
+
+
+# display
+final_with_legend
+
+#save
+ggsave(
+  filename = "figures/Fig2_wLegend.tiff",
+  plot = final_with_legend,
+  device = "tiff",
+  dpi = 600,
+  width = 10,
+  height = 10,
+  units = "in",
+  compression = "lzw",
+  bg = "white"
+)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Function
+```{r}
+make_levo_flow_plot <- function(watershed_name) {
+  
+  levo_plot <- ConcData %>%
+    filter(
+      Watershed == watershed_name,
+      !is.na(Levo_micro_mol_C_per_L)
+    ) %>%
+    mutate(
+      Date = as.POSIXct(DateTime),
+      Levo_error = mean_levo_sd
+    )
+  
+  
+  flow_plot <- FlowData %>%
+    filter(
+      Watershed == watershed_name
+    )
+  
+  
+  ggplot() +
+    
+    geom_line(
+      data = flow_plot,
+      aes(
+        x = DateTime,
+        y = (log_flow - flow_axis_min) * scale_factor
+      ),
+      color = "#156082",
+      linewidth = 1.2
+    ) +
+    
+    
+    geom_errorbar(
+      data = levo_plot,
+      aes(
+        x = Date,
+        ymin = Levo_micro_mol_C_per_L - Levo_error,
+        ymax = Levo_micro_mol_C_per_L + Levo_error
+      ),
+      width = 0,
+      linewidth = 0.4
+    ) +
+    
+    
+    geom_point(
+      data = levo_plot,
+      aes(
+        x = Date,
+        y = Levo_micro_mol_C_per_L
+      ),
+      shape = 23,
+      size = 4,
+      fill = "#FBF9A2",
+      color = "black",
+      stroke = 0.8
+    ) +
+    
+    
+    scale_y_continuous(
+      limits = c(0, levo_axis_max),
+      
+      name = expression(
+        "Levoglucosan ("*mu*"mol C L"^{-1}*")"
+      ),
+      
+      sec.axis = sec_axis(
+        
+        # inverse transformation
+        ~ . / scale_factor + flow_axis_min,
+        
+        # secondary-axis values
+        breaks = log10(c(0.01, 0.1, 1, 10, 100)),
+        
+        labels = c(
+          "0.01",
+          "0.1",
+          "1",
+          "10",
+          "100"
+        ),
+        
+        name = expression(
+          "Discharge (m"^3*" s"^{-1}*")"
+        )
+      )
+    ) +
+    
+    
+    scale_x_datetime(
+      name = "Date"
+    ) +
+    
+    theme_bw(base_size = 12) +
+    
+    theme(
+      panel.grid.minor = element_blank()
+    )
+}
+```
+
+
+Five plots
+```{r}
+SAN_plot <- make_levo_flow_plot("SAN")
+
+PESC_plot <- make_levo_flow_plot("PESC")
+
+LAG_plot <- make_levo_flow_plot("LAG")
+
+MAJ_plot <- make_levo_flow_plot("MAJ")
+
+SCT_plot <- make_levo_flow_plot("SCT")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 Prepare Flow Data and get a scaling factor 
 ```{r}
@@ -598,9 +1262,6 @@ plot_PESC <- plot_PESC +
 plot_LAG <- plot_LAG +
   theme(axis.title.x = element_blank())
 ```
-
-
-
 
 Trying to plot with patchwork
 ```{r}

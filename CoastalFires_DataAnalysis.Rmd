@@ -323,14 +323,14 @@ make_trend_plot <- function(y_var, y_lab, panel = NULL, y_limits = NULL, show_le
 #step 2: make each sub-plot ----- 
 p1 <- make_trend_plot(
   Levo_micro_mol_C_per_L,
-  expression(Levoglucosan~(mu*mol~C~L^{-1})),
+  expression(Levoglucosan~(mu*M-C)),
   panel = "A)",
   y_limits = c(0, 3)
 )
 
 p2 <- make_trend_plot(
   B6CA_and_B5CA_micro_mol_C_per_L,
-  expression(BPCA~(mu*mol~C~L^{-1})),
+  expression(BPCA~(mu*M-C)),
   panel = "B)",
   y_limits = c(0, 12)
 )
