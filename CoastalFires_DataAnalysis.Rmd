@@ -21,22 +21,14 @@ Install necessary packages (run once if necessary)
 
 Load necessary libraries
 ```{r}
-library(dplyr)
-library(ggplot2)
-library(mgcv)
-library(cowplot)
-library(vegan)
-library(ggrepel)
+library(gt)
 library(Cairo)
-library(grid)
-# library(gt)
-# library(Cairo)
-# library(ggrepel)
-# library(vegan)
-# library(tidyverse)
-# library(dplyr)
-# library(purrr)
-# library(cowplot)
+library(ggrepel)
+library(vegan)
+library(tidyverse)
+library(dplyr)
+library(purrr)
+library(cowplot)
 ```
 
 Read data file
@@ -218,9 +210,43 @@ print(spearman_df_time_since_fire)
 
 Figure 3: time-since-fire relationships
 ```{r}
-#step 0: set color and shape style -----
+#step 0: define order and style of watersheds -----
+#Watershed colors and shapes
+CombinedData <- CombinedData %>%
+  mutate(
+    Watershed = recode(
+      Watershed,
+      "San Lorenzo River" = "SAN",
+      "Pescadero Creek" = "PESC",
+      "Majors Creek" = "MAJ",
+      "Laguna Creek" = "LAG",
+      "Scott Creek" = "SCT"
+    )
+  )
+ws_cols <- c(
+  SAN  = "#FBF9A2",
+  PESC = "#FFCF55",
+  MAJ  = "#FF7410",
+  LAG  = "#EA4412",
+  SCT  = "#A00000"
+)
 
+ws_shapes <- c(
+  SAN  = 23,
+  PESC = 24,
+  MAJ  = 22,
+  LAG  = 21,
+  SCT  = 25
+)
 
+#to determine legend order
+CombinedData <- CombinedData %>%
+  mutate(
+    Watershed = factor(
+      Watershed,
+      levels = c("SAN", "PESC", "MAJ", "LAG", "SCT")
+    )
+  )
 
 #step 1: make a function for plotting figure 3 ----- 
 make_trend_plot <- function(y_var, y_lab, panel = NULL, y_limits = NULL, show_legend = FALSE) {
@@ -299,14 +325,14 @@ p1 <- make_trend_plot(
   Levo_micro_mol_C_per_L,
   expression(Levoglucosan~(mu*mol~C~L^{-1})),
   panel = "A)",
-  y_limits = c(0, 2.5)
+  y_limits = c(0, 3)
 )
 
 p2 <- make_trend_plot(
   B6CA_and_B5CA_micro_mol_C_per_L,
   expression(BPCA~(mu*mol~C~L^{-1})),
   panel = "B)",
-  y_limits = c(0, 10)
+  y_limits = c(0, 12)
 )
 
 p3 <- make_trend_plot(
@@ -351,7 +377,7 @@ final_plot <- plot_grid(
 
 #step 4: save as tiff -----
 ggsave(
-  "figures/PyC_temporal_trends_GAM.tiff",
+  "figures/Fig3_TimeSinceFire.tiff",
   final_plot,
   width = 8,
   height = 7,

@@ -1,5 +1,0 @@
----
-title: "CoastalFires_Fig3"
-output: html_document
----
-
