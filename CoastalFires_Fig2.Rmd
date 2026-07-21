@@ -302,7 +302,7 @@ make_levo_flow_plot <- function(watershed_name,
           "100"
         ),
         name = expression(
-          "Stream Flow (m"^3*" s"^{-1}*")"
+          "Discharge (m"^3*" s"^{-1}*")"
         )
       )
     ) +

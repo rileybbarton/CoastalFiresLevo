@@ -12,6 +12,7 @@ library(lubridate)
 library(tidyr)
 library(patchwork)
 library(ggplot2)
+library(grid)
 ```
 
 
@@ -238,12 +239,36 @@ DailyLoads <- DailyLoads %>%
 
 Revised estimate
 ```{r}
+#by watershed
 DailyLoads %>%
   group_by(Watershed) %>%
   summarize(
     Levo_export_Mg = max(Levo_cumulative_Mg),
     BPCA_export_Mg = max(BPCA_cumulative_Mg)
   )
+
+# Watersheds combined
+DailyLoads_All <- DailyLoads %>%
+  group_by(Date) %>%
+  summarize(
+    Levo_g_day = sum(Levo_g_day, na.rm = TRUE),
+    BPCA_g_day = sum(BPCA_g_day, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(Date) %>%
+  mutate(
+    Levo_cumulative_Mg = cumsum(Levo_g_day)/1e6,
+    BPCA_cumulative_Mg = cumsum(BPCA_g_day)/1e6
+  )
+
+#total export over study period
+TotalExport <- DailyLoads_All %>%
+  summarize(
+    Total_Levo_Mg = max(Levo_cumulative_Mg),
+    Total_BPCA_Mg = max(BPCA_cumulative_Mg)
+  )
+
+TotalExport
 ```
 
 Redo Plots
@@ -265,7 +290,7 @@ PlotData <- DailyLoads %>%
     Compound = recode(
       Compound,
       Levo_fraction = "A) Levoglucosan",
-      BPCA_fraction = "B) B6CA + B5CA"
+      BPCA_fraction = "B) BPCA"
     )
   )
 
@@ -288,7 +313,7 @@ PlotData <- PlotData %>%
   )
 
 #Plot
-ggplot(PlotData,
+cumulative_plot <- ggplot(PlotData,
        aes(Date, Fraction,
            color = Watershed)) +
 
@@ -341,11 +366,27 @@ theme(
   plot.background  = element_rect(fill = "white", colour = NA),
   strip.background = element_blank(),
   strip.text = element_text(
+    size = 18,
     face = "bold",
-    hjust = 0
+    hjust = 0,
+    margin = margin(t = 5, b = 5)
   ),
+  panel.spacing = unit(0.2, "lines"),
   axis.text.x = element_text(color = "black"),
   axis.ticks.x = element_line(color = "black")
+)
+
+#Save
+ggsave(
+  filename = "figures/Fig4_CumulativeLoad.tiff",
+  plot = cumulative_plot,
+  device = "tiff",
+  dpi = 600,
+  width = 10,
+  height = 8,
+  units = "in",
+  compression = "lzw",
+  bg = "white"
 )
 ```
 
@@ -371,7 +412,9 @@ ExportTiming_Levo <- DailyLoads %>%
   group_by(Watershed) %>%
   summarize(
     total_levo = max(Levo_cumulative_Mg),
+    day_25 = Date[min(which(Levo_cumulative_Mg >= 0.25*total_levo))],
     day_50 = Date[min(which(Levo_cumulative_Mg >= 0.5*total_levo))],
+    day_75 = Date[min(which(Levo_cumulative_Mg >= 0.75*total_levo))],
     day_90 = Date[min(which(Levo_cumulative_Mg >= 0.9*total_levo))]
   )
 
@@ -379,7 +422,9 @@ ExportTiming_BPCA <- DailyLoads %>%
   group_by(Watershed) %>%
   summarize(
     total_BPCA = max(BPCA_cumulative_Mg),
+    day_25 = Date[min(which(BPCA_cumulative_Mg >= 0.25*total_BPCA))],
     day_50 = Date[min(which(BPCA_cumulative_Mg >= 0.5*total_BPCA))],
+    day_75 = Date[min(which(BPCA_cumulative_Mg >= 0.75*total_BPCA))],
     day_90 = Date[min(which(BPCA_cumulative_Mg >= 0.9*total_BPCA))]
   )
 ```
