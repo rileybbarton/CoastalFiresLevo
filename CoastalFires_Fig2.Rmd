@@ -60,13 +60,37 @@ CombinedData <- CombinedData %>%
 
 Get mean error of replicates for error bars
 ```{r}
-mean_levo_sd <- CombinedData %>%
-  filter(!is.na(stdev_Levo_micro_mol_C_per_L)) %>%
-  summarize(
-    mean_sd = mean(stdev_Levo_micro_mol_C_per_L)
-  ) %>%
-  pull(mean_sd)
-mean_levo_sd
+# #RSD
+# RSD_levo <- CombinedData %>%
+#   filter(
+#     !is.na(stdev_Levo_micro_mol_C_per_L),
+#     !is.na(Levo_micro_mol_C_per_L)
+#   ) %>%
+#   mutate(
+#     RSD = (stdev_Levo_micro_mol_C_per_L / Levo_micro_mol_C_per_L) * 100
+#   ) %>%
+#   summarize(
+#     mean_RSD = mean(RSD, na.rm = TRUE)
+#   ) %>%
+#   pull(mean_RSD)
+# 
+# RSD_levo
+
+# #mean se
+# SE_levo <- CombinedData %>%
+#   mutate(
+#     SE_Levo = stdev_Levo_micro_mol_C_per_L / sqrt(2)
+#   ) %>%
+#   summarize(
+#     mean_SE = mean(SE_Levo, na.rm = TRUE)
+#   ) %>%
+#   pull(mean_SE)
+# 
+# SE_levo
+
+CombinedData$SE_Levo <- CombinedData$stdev_Levo_micro_mol_C_per_L / sqrt(2)
+
+
 ```
 
 Simplify Dataframe
@@ -81,6 +105,7 @@ ConcData <- CombinedData %>%
     DateTime,
     Levo_micro_mol_C_per_L,
     stdev_Levo_micro_mol_C_per_L,
+    SE_Levo,
     B6CA_and_B5CA_micro_mol_C_per_L
   ) %>%
   mutate(
@@ -332,6 +357,129 @@ make_levo_flow_plot <- function(watershed_name,
     )
 }
 ```
+
+#standard error instead
+```{r}
+make_levo_flow_plot <- function(watershed_name,
+                                point_fill,
+                                point_shape,
+                                panel_label,
+                                show_x_axis = TRUE) {
+  
+  levo_plot <- ConcData %>%
+    filter(
+      Watershed == watershed_name,
+      !is.na(Levo_micro_mol_C_per_L)
+    ) %>%
+    mutate(
+      Date = as.POSIXct(DateTime)
+    )
+  
+  
+  flow_plot <- FlowData %>%
+    filter(
+      Watershed == watershed_name
+    )
+  
+  
+  ggplot() +
+    
+    geom_line(
+      data = flow_plot,
+      aes(
+        x = DateTime,
+        y = (log_flow - flow_axis_min) * scale_factor
+      ),
+      color = "#156082",
+      linewidth = 1
+    ) +
+    
+    
+    geom_errorbar(
+      data = levo_plot,
+      aes(
+        x = Date,
+        ymin = Levo_micro_mol_C_per_L - SE_Levo,
+        ymax = Levo_micro_mol_C_per_L + SE_Levo
+      ),
+      width = 0,
+      linewidth = 0.4
+    ) +
+    
+    geom_line(
+      data = levo_plot,
+      aes(
+        x = Date,
+        y = Levo_micro_mol_C_per_L
+      ),
+      linetype = "dotted",
+      linewidth = 0.5,
+      color = "black"
+    ) +
+    
+    geom_point(
+      data = levo_plot,
+      aes(
+        x = Date,
+        y = Levo_micro_mol_C_per_L
+      ),
+      shape = point_shape,
+      size = 4,
+      fill = point_fill,
+      color = "black",
+      stroke = 0.8
+    ) +
+    
+    
+    scale_y_continuous(
+      limits = c(0, levo_axis_max),
+      
+      name = expression(
+        "Levoglucosan ("*mu*"M-C)"
+      ),
+      
+      sec.axis = sec_axis(
+        ~ . / scale_factor + flow_axis_min,
+        breaks = log10(c(0.01, 0.1, 1, 10, 100)),
+        labels = c(
+          "0.01",
+          "0.1",
+          "1",
+          "10",
+          "100"
+        ),
+        name = expression(
+          "Discharge (m"^3*" s"^{-1}*")"
+        )
+      )
+    ) +
+    
+    
+    scale_x_datetime(
+      name = NULL,
+      date_breaks = "1 month",
+      date_labels = "%b"
+    ) +
+    
+    annotate(
+      "text",
+      x = -Inf,
+      y = Inf,
+      label = panel_label,
+      hjust = -0.5,
+      vjust = 1.5,
+      fontface = "bold",
+      size = 5
+    ) +
+    
+    theme_bw(base_size = 12) +
+    
+    theme(
+      panel.grid = element_blank()
+    )
+}
+```
+
 
 Plots
 ```{r}
