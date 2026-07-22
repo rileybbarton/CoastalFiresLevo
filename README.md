@@ -1,6 +1,6 @@
 # Data and Scripts for _Early post-fire mobilization of levoglucosan distinctly contrasts black carbon dynamics in small coastal mountain watersheds_ 
 
-Submitted for Publication in Geophysical Research Letters
+Submitted for Publication in Biogeochemistry Letters
 
 Contact [Riley Barton](mailto:rileybbarton@gmail.com) with any questions
 
