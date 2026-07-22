@@ -410,6 +410,135 @@ ggsave(
 )
 ```
 
+Plot with legend
+```{r}
+legend_labels <- c(
+  "San Lorenzo River (SAN)",
+  "Pescadero Creek (PESC)",
+  "Majors Creek (MAJ)",
+  "Laguna Creek (LAG)",
+  "Scott Creek (SCT)"
+)
+
+# Watershed legend rows
+legend_rows <- lapply(seq_along(legend_labels), function(i) {
+  
+  ggdraw() +
+    draw_grob(
+      pointsGrob(
+        x = 0.08,
+        y = 0.5,
+        pch = ws_shapes[i],
+        gp = gpar(
+          fill = ws_cols[i],
+          col = "black",
+          lwd = 1.5
+        )
+      )
+    ) +
+    draw_label(
+      legend_labels[i],
+      x = 0.22,
+      y = 0.5,
+      hjust = 0,
+      size = 10
+    )
+})
+
+
+# Discharge legend row
+discharge_row <- ggdraw() +
+  draw_grob(
+    segmentsGrob(
+      x0 = 0.04,
+      x1 = 0.12,
+      y0 = 0.5,
+      y1 = 0.5,
+      gp = gpar(
+        col = "#156082",
+        lwd = 3
+      )
+    )
+  ) +
+  draw_label(
+    "Discharge",
+    x = 0.22,
+    y = 0.5,
+    hjust = 0,
+    size = 10
+  )
+
+
+# Legend title
+legend_title <- ggdraw() +
+  draw_label(
+    "Watershed",
+    x = 0.05,
+    y = 0.5,
+    hjust = 0,
+    fontface = "bold",
+    size = 11
+  )
+
+# Compact legend title + legend body
+legend_body <- plot_grid(
+  plotlist = c(
+    legend_rows,
+    list(discharge_row)
+  ),
+  ncol = 1,
+  align = "v"
+)
+
+custom_legend <- plot_grid(
+  legend_body,
+  ncol = 1,
+  rel_heights = c(0.08, 1)
+)
+
+# Add legend to figure
+
+final_with_legend <- ggdraw() +
+  draw_plot(final_plot) +
+  draw_plot(
+    custom_legend,
+    x = 0.62,
+    y = 0.05,
+    width = 0.32,
+    height = 0.27
+  )
+
+# display
+final_with_legend
+
+#Save
+ggsave(
+  filename = "figures/Fig2_wLegend.tiff",
+  plot = final_with_legend,
+  device = "tiff",
+  dpi = 600,
+  width = 10,
+  height = 8,
+  units = "in",
+  compression = "lzw",
+  bg = "white"
+)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Playing with legend
 ```{r}
 legend_df <- data.frame(
@@ -629,7 +758,7 @@ ggsave(
 ```
 
 
-Trouble shooting laguna
+
 ```{r}
 
 ```
