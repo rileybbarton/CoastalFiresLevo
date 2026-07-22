@@ -18,13 +18,23 @@ Notes:
 
 **Data Analysis:**
 
-In order to conduct all statistical analyses associated with the manuscript, run the following script:
+In order to conduct statistical analyses associated with the manuscript, run the following script:
 
 `CoastalFires_DataAnalysis.Rmd`
 
 Notes: 
  - The script is written in R-Markdown chunks that must be completed in order.
  - This will result in a variety of statistical outputs as well as an option to print figures showcasing the results of the NMDS.
+
+**Cumulative Export:**
+
+In order to determine cumulative export fractions associated with the manuscript, run the following script:
+
+`CoastalFires_CumulativeLoad.Rmd`
+
+Notes: 
+ - The script is written in R-Markdown chunks that must be completed in order.
+ - This will result in determining when 25, 50, 75, and 90% of levoglucosan and BPCA cumulative export occured.
 
 **References:**
 
