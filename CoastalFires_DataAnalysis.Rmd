@@ -24,11 +24,20 @@ library(Cairo)
 library(ggrepel)
 library(vegan)
 library(tidyverse)
+library(dplyr)
+library(lubridate)
+library(tidyr)
+library(patchwork)
+library(ggplot2)
 ```
 
-Read data file
+Read data files
 ```{r}
-CombinedData <- readr::read_csv(file.path("CoastalFires_CombinedData.csv"))
+#From CUAHSI Hydroshare
+DischargeData <- readr::read_csv("https://www.hydroshare.org/resource/26f08ef7fe344fcb9d3da45160b697fe/data/contents/CoastalFires_DischargeData.csv")
+
+#From GitHub
+CombinedData <- readr::read_csv("data/CoastalFires_CombinedData.csv")
 ``` 
 
 Exclude samples that were taken at a different location. 
@@ -398,122 +407,333 @@ geom_text_repel(
 #Determine which vectors are statistically significant
 envfit_result
 ```
-
-Print a labeled NMDS figure
+Cumulative Load
 ```{r}
-# Begin saving to file to output folder
-CairoPNG(filename = file.path("NMDS_labeled.png"),
-         width = 7, height = 4, units = "in", res = 300)
+#step 1: exclude samples from alt location -----
+#Scott Creek flooded during the events of January 27-28th, 2021. Samples were collected at a downstream lagoon site. However, due to this the data collected does not accurately reflect that at the sample site. As such authors of the associated manuscript have excluded it from all data analysis and figure creation.
+CombinedData <- CombinedData %>%
+  filter(Location_Change != "Y")
 
-#NMDS Visual Plot
-ggplot(nmds_scores, aes(x = NMDS1, y = NMDS2)) +
-  
-  #Sites
-  geom_point(data = nmds_scores, aes(size = 100, color = time, fill = time, shape = watershed)) +
-     scale_shape_manual(values = c(21, 22, 24, 23, 25))+
-  scale_fill_gradient(low="#00FFFF", high="navy")+
-  scale_color_gradient(low="#00FFFF", high="navy")+
- 
-  #Species
-  geom_point(data = nmds_species, aes(x = NMDS1, y = NMDS2), shape = 8, stroke = 2, size = 3, alpha = 1, colour = "hotpink") +
-  
-  geom_text_repel(
-  data = nmds_species,
-  aes(x = NMDS1, y = NMDS2, label = ShortLabel),
-  colour = "black", fontface = "bold", size = 3,
-  box.padding = 0.3,
-  point.padding = 0.25,
-  segment.color = NA,
-  max.overlaps = Inf,
-  force = 1
-) +
-
-geom_text_repel(
-  data = en_coord_cont,
-  aes(x = NMDS1 * 0.75, y = NMDS2 * 0.75, label = WrappedLabel),
-  size = 3,
-  box.padding = 0.5,
-  point.padding = 0.25,
-  segment.color = NA,
-  max.overlaps = Inf,
-  force = 1
-) +
-  
-  #vectors
-  geom_segment(aes(x = 0, y = 0, xend = NMDS1*0.75, yend = NMDS2*0.75), data = en_coord_cont, linewidth =1, alpha = 1, colour = "black", arrow = arrow(length = unit(0.2, "cm"), type = "closed")) +
-  
-  #chart title
-  labs(x = "NMDS1",
-       y = "NMDS2") +
-  theme_minimal() +
-  theme(
-    panel.grid = element_blank(),  # Remove gridlines
-    axis.line = element_line(size = 0.5),  # Add axis lines
-    axis.ticks = element_line(size = 0.5),  # Add axis ticks
-    axis.ticks.length = unit(3, "pt"),  # Make ticks outward
-    axis.line.x = element_line(size = 0.5),
-    axis.line.y = element_line(size = 0.5)
+#step 2: make sure dates are formatted correctly -----
+CombinedData <- CombinedData %>%
+  mutate(
+    DateTime = as.POSIXct(Date, tz = "America/Los_Angeles") +
+      if_else(is.na(Time),
+              12*60*60,
+              as.numeric(Time)),
+    DateTime = format(DateTime, "%Y-%m-%d %H:%M")
   )
 
-# Finish saving the NMDS figure file
-dev.off()
-```
+#step 3: get data for cumulative export & convert concentrations -----
+ConcData <- CombinedData %>%
+  select(Watershed, DateTime, Levo_micro_mol_C_per_L, stdev_Levo_micro_mol_C_per_L, B6CA_and_B5CA_micro_mol_C_per_L)
 
-Print Unlabeled NMDS for figure making
-```{r}
-# Begin saving to file to output folder
-CairoPNG(filename = file.path("NMDS_unlabeled.png"), 
-         width = 7, height = 4, units = "in", res = 300)
-
-# Draw the plot (your label-free version)
-ggplot(nmds_scores, aes(x = NMDS1, y = NMDS2)) +
-  geom_point(data = nmds_scores, aes(size = 100, color = time, fill = time, shape = watershed)) +
-  scale_shape_manual(values = c(21, 22, 24, 23, 25)) +
-  scale_fill_gradient(low = "#00FFFF", high = "navy") +
-  scale_color_gradient(low = "#00FFFF", high = "navy") +
-  geom_point(data = nmds_species, aes(x = NMDS1, y = NMDS2), 
-             shape = 8, stroke = 2, size = 3, alpha = 1, colour = "hotpink") +
-  geom_segment(data = en_coord_cont, 
-               aes(x = 0, y = 0, xend = NMDS1 * 0.75, yend = NMDS2 * 0.75),
-               linewidth = 1, alpha = 1, colour = "black",
-               arrow = arrow(length = unit(0.2, "cm"), type = "closed")) +
-  labs(x = "NMDS1", y = "NMDS2") +
-  theme_minimal() +
-  theme(
-    panel.grid = element_blank(),
-    axis.line = element_line(size = 0.5),
-    axis.ticks = element_line(size = 0.5),
-    axis.ticks.length = unit(3, "pt"),
-    axis.line.x = element_line(size = 0.5),
-    axis.line.y = element_line(size = 0.5)
+#Fix watershed names to match discharge data
+ConcData <- ConcData %>%
+  mutate(Watershed = recode(Watershed,
+                            "Laguna Creek" = "LAG",
+                            "San Lorenzo River" = "SAN",
+                            "Pescadero Creek" = "PESC",
+                            "Majors Creek" = "MAJ",
+                            "Scott Creek" = "SCT"))
+#Make sure date is correct format
+ConcData <- ConcData %>%
+  mutate(
+    DateTime = as.POSIXct(DateTime,
+                          format = "%Y-%m-%d %H:%M",
+                          tz = "America/Los_Angeles")
   )
 
-# Finish saving the NMDS figure file
-dev.off()
-```
+#to get gC from uM-C, multiply by 0.012011
+ConcData$Levo_mg_C_per_L <- ConcData$Levo_micro_mol_C_per_L * 0.012011
+ConcData$BPCA_mg_C_per_L <- ConcData$B6CA_and_B5CA_micro_mol_C_per_L * 0.012011
 
-#Calculate fluxes of levoglucosan in the first year post-fire
-```{r}
-#Convert discharge values from cubic meters per second (cms) to liters per second
-CombinedData$Discharge_liter_per_sec <- CombinedData$Discharge_cms * 1000
+#remove unneccessary columns
+ConcData <- ConcData %>%
+  select(-Levo_micro_mol_C_per_L,
+         -B6CA_and_B5CA_micro_mol_C_per_L)
 
-#Calculate sample-specific flux values and convert to units of kg per year
-CombinedData$Levo_flux_kilo_gram_C_per_year <- CombinedData$Levo_micro_mol_C_per_L * CombinedData$Discharge_liter_per_sec * 31536000 * 12 / 1000000000
+#step 4: format discharge data frames -----
+SAN <- DischargeData %>%
+  transmute(
+    Watershed = "SAN",
+    DateTime = parse_date_time(SAN_DateTime,
+                               orders = c("mdy HM", "mdy"),
+                               tz = "America/Los_Angeles"),
+    Flow = SAN_Flow_cms
+  )
 
-#Average flux samples by watershed
-avg_flux_per_watershed <- CombinedData %>%
+PESC <- DischargeData %>%
+  transmute(
+    Watershed = "PESC",
+    DateTime = parse_date_time(PESC_DateTime,
+                               orders = c("mdy HM", "mdy"),
+                               tz = "America/Los_Angeles"),
+    Flow = PESC_Flow_cms
+  )
+
+LAG <- DischargeData %>%
+  transmute(
+    Watershed = "LAG",
+    DateTime = parse_date_time(LAG_DateTime,
+                               orders = c("mdy HM", "mdy"),
+                               tz = "America/Los_Angeles"),
+    Flow = LAG_Flow_cms
+  )
+
+MAJ <- DischargeData %>%
+  transmute(
+    Watershed = "MAJ",
+    DateTime = parse_date_time(MAJ_DateTime,
+                               orders = c("mdy HM", "mdy"),
+                               tz = "America/Los_Angeles"),
+    Flow = MAJ_Flow_cms
+  )
+
+SCT <- DischargeData %>%
+  transmute(
+    Watershed = "SCT",
+    DateTime = parse_date_time(SCT_DateTime,
+                               orders = c("mdy HM", "mdy"),
+                               tz = "America/Los_Angeles"),
+    Flow = SCT_Flow_cms
+  )
+
+FlowData <- bind_rows(SAN, PESC, LAG, MAJ, SCT)
+
+#Remove NAs from FlowData
+
+FlowData <- FlowData %>%
+  filter(!is.na(DateTime),
+         !is.na(Flow))
+
+#check it worked
+FlowData %>%
   group_by(Watershed) %>%
-  summarise(
-    mean_flux = mean(Levo_flux_kilo_gram_C_per_year, na.rm = TRUE),
-    sd_flux = sd(Levo_flux_kilo_gram_C_per_year, na.rm = TRUE),
-    n = sum(!is.na(Levo_flux_kilo_gram_C_per_year))
+  summarize(
+    missing_dates = sum(is.na(DateTime)),
+    start = min(DateTime),
+    end = max(DateTime),
+    n=n()
   )
 
-#Calculate sum of fluxes from each watershed
-total_flux_all_watersheds <- sum(avg_flux_per_watershed$mean_flux)
-total_flux_se <- sqrt(sum((avg_flux_per_watershed$sd_flux)^2 / avg_flux_per_watershed$n))
+#step 5: convert to daily discharge -----
+#daily is highest resolution for Scott Creek
+DailyFlow <- FlowData %>%
+  mutate(Date = as.Date(DateTime)) %>%
+  filter(Date >= as.Date("2020-10-07"),
+         Date <= as.Date("2021-05-02")) %>%
+  group_by(Watershed, Date) %>%
+  summarize(
+    Q_mean = mean(Flow, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    Q_log = log10(Q_mean)
+  )
 
-#Print value with standard deviation carried over
-print(total_flux_all_watersheds) #flux
-print(total_flux_se) #standard error
+#check
+DailyFlow %>%
+  count(Watershed)
+
+#step 6: get daily concentrations -----
+DailyConc <- DailyFlow %>%
+  group_by(Watershed) %>%
+  group_modify(~{
+
+    ws <- .y$Watershed
+
+    samples <- ConcData %>%
+      filter(Watershed == ws) %>%
+      arrange(DateTime) %>%
+      mutate(Date = as.Date(DateTime))
+
+    if(nrow(samples) < 2){
+      .x$Levo_interp <- NA
+      .x$BPCA_interp <- NA
+      return(.x)
+    }
+
+    .x$Levo_interp <-
+      approx(
+          x = as.numeric(samples$Date),
+          y = samples$Levo_mg_C_per_L,
+          xout = as.numeric(.x$Date),
+          method = "linear",
+          rule = 1 #only interpolate within sampling period
+      )$y 
+
+    .x$BPCA_interp <-
+      approx(
+          x = as.numeric(samples$Date),
+          y = samples$BPCA_mg_C_per_L,
+          xout = as.numeric(.x$Date),
+          method = "linear",
+          rule = 1 #only interpolate within sampling period
+      )$y 
+    .x
+  })
+
+#step 7: get daily loads & cumulative export values -----
+DailyLoads <- DailyConc %>%
+  filter(!is.na(Levo_interp),
+         !is.na(BPCA_interp)) %>%
+  mutate(
+    Levo_g_day = Q_mean * Levo_interp * 86400,
+    BPCA_g_day = Q_mean * BPCA_interp * 86400
+  )
+
+DailyLoads <- DailyLoads %>%
+  group_by(Watershed) %>%
+  arrange(Date) %>%
+  mutate(
+    Levo_cumulative_Mg = cumsum(Levo_g_day)/1e6,
+    BPCA_cumulative_Mg = cumsum(BPCA_g_day)/1e6
+  )
+
+DailyLoads %>%
+  group_by(Watershed) %>%
+  summarize(
+    Levo_export_Mg = max(Levo_cumulative_Mg),
+    BPCA_export_Mg = max(BPCA_cumulative_Mg)
+  )
+
+#step 8: plot data -----
+#Make data for plot in long format
+PlotData <- DailyLoads %>%
+  group_by(Watershed) %>%
+  mutate(
+    Levo_fraction = Levo_cumulative_Mg / max(Levo_cumulative_Mg),
+    BPCA_fraction = BPCA_cumulative_Mg / max(BPCA_cumulative_Mg)
+  ) %>%
+  select(Date, Watershed, Levo_fraction, BPCA_fraction) %>%
+  pivot_longer(
+    cols = c(Levo_fraction, BPCA_fraction),
+    names_to = "Compound",
+    values_to = "Fraction"
+  ) %>%
+  mutate(
+    Compound = recode(
+      Compound,
+      Levo_fraction = "A) Levoglucosan",
+      BPCA_fraction = "B) B6CA + B5CA"
+    )
+  )
+
+#Define color scheme
+ws_cols <- c(
+  SAN  = "#D9C84A", #orignial color = "#FBF9A2"
+  PESC = "#FFCF55",
+  MAJ  = "#FF7410",
+  LAG  = "#EA4412",
+  SCT  = "#A00000"
+)
+
+#Set order for legend
+PlotData <- PlotData %>%
+  mutate(
+    Watershed = factor(
+      Watershed,
+      levels = c("SAN", "PESC", "MAJ", "LAG", "SCT")
+    )
+  )
+
+#Plot
+ggplot(PlotData,
+       aes(Date, Fraction,
+           color = Watershed)) +
+
+  geom_line(linewidth = 1.3) +
+
+  facet_wrap(~Compound,
+             ncol = 1,
+             axes = "all") +
+
+  scale_color_manual(values = ws_cols) +
+
+  scale_y_continuous(
+    limits = c(0,1),
+    breaks = seq(0,1,0.25),
+    expand = c(0,0)
+  ) +
+
+  scale_x_date(
+    date_breaks = "1 month",
+    date_labels = "%b"
+  ) +
+
+  labs(
+    x = NULL,
+    y = "Fraction of cumulative export"
+  ) +
+
+  # geom_vline(
+  #   xintercept = as.Date(c(
+  #     "2020-10-07",
+  #     "2020-11-17",
+  #     "2020-11-18",
+  #     "2020-12-11",
+  #     "2020-12-13",
+  #     "2021-01-27",
+  #     "2021-01-28",
+  #     "2021-02-02",
+  #     "2021-03-18",
+  #     "2021-05-02"
+  #   )),
+  #   linetype = "dashed",
+  #   color = "grey70",
+  #   linewidth = 0.5
+  # ) +
+  
+theme_classic(base_size = 13) +
+
+theme(
+  panel.background = element_rect(fill = "white", colour = NA),
+  plot.background  = element_rect(fill = "white", colour = NA),
+  strip.background = element_blank(),
+  strip.text = element_text(
+    face = "bold",
+    hjust = 0
+  ),
+  axis.text.x = element_text(color = "black"),
+  axis.ticks.x = element_line(color = "black")
+)
+
+#step 9: get export timing at key intervals -----
+ExportTiming_Levo <- DailyLoads %>%
+  group_by(Watershed) %>%
+  summarize(
+    total_levo = max(Levo_cumulative_Mg),
+    day_50 = Date[min(which(Levo_cumulative_Mg >= 0.5*total_levo))],
+    day_90 = Date[min(which(Levo_cumulative_Mg >= 0.9*total_levo))]
+  )
+
+ExportTiming_BPCA <- DailyLoads %>%
+  group_by(Watershed) %>%
+  summarize(
+    total_BPCA = max(BPCA_cumulative_Mg),
+    day_50 = Date[min(which(BPCA_cumulative_Mg >= 0.5*total_BPCA))],
+    day_90 = Date[min(which(BPCA_cumulative_Mg >= 0.9*total_BPCA))]
+  )
+
+#step 10: get export timing -----
+ExportTiming_Levo <- DailyLoads %>%
+  group_by(Watershed) %>%
+  summarize(
+    total_levo = max(Levo_cumulative_Mg),
+    day_25 = Date[min(which(Levo_cumulative_Mg >= 0.25*total_levo))],
+    day_50 = Date[min(which(Levo_cumulative_Mg >= 0.5*total_levo))],
+    day_75 = Date[min(which(Levo_cumulative_Mg >= 0.75*total_levo))],
+    day_90 = Date[min(which(Levo_cumulative_Mg >= 0.9*total_levo))]
+  )
+
+ExportTiming_BPCA <- DailyLoads %>%
+  group_by(Watershed) %>%
+  summarize(
+    total_BPCA = max(BPCA_cumulative_Mg),
+    day_25 = Date[min(which(BPCA_cumulative_Mg >= 0.25*total_BPCA))],
+    day_50 = Date[min(which(BPCA_cumulative_Mg >= 0.5*total_BPCA))],
+    day_75 = Date[min(which(BPCA_cumulative_Mg >= 0.75*total_BPCA))],
+    day_90 = Date[min(which(BPCA_cumulative_Mg >= 0.9*total_BPCA))]
+  )
 ```
