@@ -1,6 +1,6 @@
 # Data and Scripts for _Early post-fire mobilization of levoglucosan distinctly contrasts black carbon dynamics in small coastal mountain watersheds_ 
 
-Submitted for Publication in Geophysical Research Letters
+Submitted for Publication in Biogeochemistry Letters
 
 Contact [Riley Barton](mailto:rileybbarton@gmail.com) with any questions
 
@@ -18,13 +18,13 @@ Notes:
 
 **Data Analysis:**
 
-In order to conduct all statistical analyses associated with the manuscript, run the following script:
+In order to conduct statistical analyses associated with the manuscript, run the following script:
 
 `CoastalFires_DataAnalysis.Rmd`
 
 Notes: 
  - The script is written in R-Markdown chunks that must be completed in order.
- - This will result in a variety of statistical outputs as well as an option to print figures showcasing the results of the NMDS.
+ - This will result in a variety of statistical outputs including correlation analyses, significant differences, cumulative load estimations, and NMDS.
 
 **References:**
 
