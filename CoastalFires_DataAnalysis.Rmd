@@ -540,7 +540,7 @@ ggplot(nmds_scores, aes(x = NMDS1, y = NMDS2)) +
   scale_color_gradient(low="#00FFFF", high="navy")+
  
   #Species
-  geom_point(data = nmds_species, aes(x = NMDS1, y = NMDS2), shape = 8, stroke = 2, size = 3, alpha = 1, colour = "hotpink") +
+  geom_point(data = nmds_species, aes(x = NMDS1, y = NMDS2), shape = 8, stroke = 2, size = 3, alpha = 1, colour = "orange") +
   
   geom_text_repel(
   data = nmds_species,
@@ -600,7 +600,7 @@ ggplot(nmds_scores, aes(x = NMDS1, y = NMDS2)) +
   scale_color_gradient(low="#00FFFF", high="navy")+
  
   #Species
-  geom_point(data = nmds_species, aes(x = NMDS1, y = NMDS2), shape = 8, stroke = 2, size = 3, alpha = 1, colour = "hotpink") +
+  geom_point(data = nmds_species, aes(x = NMDS1, y = NMDS2), shape = 8, stroke = 2, size = 3, alpha = 1, colour = "orange") +
   
   geom_text_repel(
   data = nmds_species,
@@ -657,7 +657,7 @@ ggplot(nmds_scores, aes(x = NMDS1, y = NMDS2)) +
   scale_fill_gradient(low = "#00FFFF", high = "navy") +
   scale_color_gradient(low = "#00FFFF", high = "navy") +
   geom_point(data = nmds_species, aes(x = NMDS1, y = NMDS2), 
-             shape = 8, stroke = 2, size = 3, alpha = 1, colour = "hotpink") +
+             shape = 8, stroke = 2, size = 3, alpha = 1, colour = "orange") +
   geom_segment(data = en_coord_cont, 
                aes(x = 0, y = 0, xend = NMDS1 * 0.75, yend = NMDS2 * 0.75),
                linewidth = 1, alpha = 1, colour = "black",
