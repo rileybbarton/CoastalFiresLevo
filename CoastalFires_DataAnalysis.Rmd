@@ -15,8 +15,9 @@ Install necessary packages (run once if necessary)
 #install.packages("ggrepel")
 #install.packages("vegan")
 #install.packages("tidyverse")
-#install.packages("vegan")
-#install.packages("tidyverse")
+#install.packages("dplyr")
+#install.packages("purrr")
+#install.packages("cowplot")
 ```
 
 Load necessary libraries
@@ -323,14 +324,14 @@ make_trend_plot <- function(y_var, y_lab, panel = NULL, y_limits = NULL, show_le
 #step 2: make each sub-plot ----- 
 p1 <- make_trend_plot(
   Levo_micro_mol_C_per_L,
-  expression(Levoglucosan~("μM-C")), 
+  expression(Levoglucosan~("μmol-C"~L^{-1})), 
   panel = "A)",
   y_limits = c(0, 3)
 )
 
 p2 <- make_trend_plot(
   B6CA_and_B5CA_micro_mol_C_per_L,
-  expression(BPCA~("μM-C")),
+  expression(BPCA~("μmol-C"~L^{-1})),
   panel = "B)",
   y_limits = c(0, 12)
 )
@@ -677,7 +678,7 @@ ggplot(nmds_scores, aes(x = NMDS1, y = NMDS2)) +
 dev.off()
 ```
 
-#Calculate fluxes of levoglucosan in the first year post-fire
+#Calculate rough fluxes of levoglucosan in the first year post-fire
 ```{r}
 #Convert discharge values from cubic meters per second (cms) to liters per second
 CombinedData$Discharge_liter_per_sec <- CombinedData$Discharge_cms * 1000
