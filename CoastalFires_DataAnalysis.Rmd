@@ -108,7 +108,7 @@ CombinedData$Watershed <- as.factor(CombinedData$Watershed)
 # Filter to numeric data (excluding lat/long again)
 numeric_columns <- sapply(CombinedData, is.numeric)
 Data_numeric <- CombinedData[, numeric_columns]
-Data_numeric <- Data_numeric %>% select(-Latitude, -Longitude)
+Data_numeric <- Data_numeric %>% select(-Latitude, -Longitude, -`Increased greenness`, -`Non-processing`)
 
 # Run Kruskal-Wallis test for each numeric variable by Watershed
 kruskal_results <- sapply(names(Data_numeric), function(var) {
@@ -423,7 +423,9 @@ print(spearman_df_Q)
 Spearman's Rank: Levo versus watershed and fire characteristics 
 ```{r}
 # Variables to test against Levo_micro_mol_C_per_L
-vars_to_test_levo_conc <- c("Area_square_kilometer", "Average_slope_percent", "Average_precipitation_milli_meter", "Burn_Extent_percent", "Area_low_severity_percent", "Area_low_to_mod_severity_percent", "Area_mod_to_high_severity_percent", "Forest_percent", "Shrub_percent", "Developed_percent", "Sandstone_and_sedimentary_percent", "Igneous_percent", "Suficial_Sediments_percent", "Schist_percent")
+vars_to_test_levo_conc <- c("Area_square_kilometer", "Average_slope_percent", "Average_precipitation_milli_meter",  "Mean_dNBR_watershed", "BE_un_low", "BE_low", "BE_mod","BE_high",
+"Forest_percent", "Shrub_percent", "Developed_percent", "Sandstone_and_sedimentary_percent", "Igneous_percent", "Suficial_Sediments_percent", "Schist_percent")
+  #from Richardson: "Burn_Extent_percent", "Area_low_severity_percent", "Area_low_to_mod_severity_percent", "Area_mod_to_high_severity_percent",
 
 # Initialize a list to store results
 spearman_results_levo_conc <- lapply(vars_to_test_levo_conc, function(var) {
@@ -454,7 +456,9 @@ print(spearman_df_levo_conc)
 Spearman's Rank: Levo-DOC versus watershed and fire characteristics 
 ```{r}
 # Variables to test against Levo_DOC_percent
-vars_to_test_levo_DOC <- c("Area_square_kilometer", "Average_slope_percent", "Average_precipitation_milli_meter", "Burn_Extent_percent", "Area_low_severity_percent", "Area_low_to_mod_severity_percent", "Area_mod_to_high_severity_percent", "Forest_percent", "Shrub_percent", "Developed_percent", "Sandstone_and_sedimentary_percent", "Igneous_percent", "Suficial_Sediments_percent", "Schist_percent")
+vars_to_test_levo_DOC <- c("Area_square_kilometer", "Average_slope_percent", "Average_precipitation_milli_meter",  "Mean_dNBR_watershed", "BE_un_low", "BE_low", "BE_mod","BE_high",
+"Forest_percent", "Shrub_percent", "Developed_percent", "Sandstone_and_sedimentary_percent", "Igneous_percent", "Suficial_Sediments_percent", "Schist_percent")
+  #from Richardson: "Burn_Extent_percent", "Area_low_severity_percent", "Area_low_to_mod_severity_percent", "Area_mod_to_high_severity_percent",
 
 # Initialize a list to store results
 spearman_results_levo_DOC <- lapply(vars_to_test_levo_DOC, function(var) {
@@ -508,7 +512,8 @@ nmds_scores$time <- CombinedData_clean$time_since_fire_day #this is for coloring
 nmds_scores$watershed <- CombinedData_clean$Watershed #this is for the point shape by watershed
 
 # Environmental variables 
-env_variables <- CombinedData_clean[c("time_since_fire_day", "Area_low_severity_percent", "Discharge_cms", "Area_square_kilometer", "Average_slope_percent", "Burn_Extent_percent", "Area_low_to_mod_severity_percent", "Area_mod_to_high_severity_percent")]
+env_variables <- CombinedData_clean[c("time_since_fire_day","Discharge_cms", "Area_square_kilometer", "Average_slope_percent", "Burn_Extent_percent", "Mean_dNBR_watershed", "BE_un_low", "BE_low", "BE_mod","BE_high")]
+  #from Richardson:  "Area_low_severity_percent", "Area_low_to_mod_severity_percent", "Area_mod_to_high_severity_percent"
 
 #assign environmental variables to df
 envfit_result <- envfit(nmds_result, env_variables, permutations = 999)
@@ -522,13 +527,15 @@ nmds_species$ShortLabel <- c("DOC", "Levo","BPCA","Levo:DOC", "BPCA:DOC")  # Rep
 # Change labels for plotting vectors. Also wrapping text for improving clarity of the plot
 en_coord_cont$WrappedLabel <- c(
   "Time Since\nFire", #Time Since Fire
-  "Low Severity\nBurn Extent", #Low Seveirty Burn Extent
   "Discharge", #Discharge
   "Watershed\nArea",
   "Slope",
   "Burn Extent",
-  "Low-Mod\nBurn Extent",
-  "Mod-High\nBurn Extent" #Moderate to High Burn Extent
+  "Mean dnbr",
+  "Un-Low\nBurn Extent",
+  "Low\nBurn Extent",
+  "Mod\nBurn Extent",
+  "High\nBurn Extent" 
 )
 
 #NMDS Visual Plot
