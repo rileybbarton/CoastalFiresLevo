@@ -33,7 +33,7 @@ Get Data
 #DischargeData <- readr::read_csv("https://www.hydroshare.org/resource/26f08ef7fe344fcb9d3da45160b697fe/data/contents/CoastalFires_DischargeData.csv")
 
 #flow data was rounded...so for now it is here
-DischargeData <- readr::read_csv("data/CoastalFires_FlowData.csv")
+DischargeData <- readr::read_csv("data/CoastalFires_FlowData.csv") #use this instead since the LAG values are rounded on CUAHSI
 
 #From GitHub
 CombinedData <- readr::read_csv("data/CoastalFires_CombinedData.csv")
@@ -332,7 +332,7 @@ make_levo_flow_plot <- function(watershed_name,
 ```
 
 
-Plots
+Make a plot for each watershed
 ```{r}
 SAN_plot <- make_levo_flow_plot(
   "SAN",
@@ -375,7 +375,7 @@ SCT_plot <- make_levo_flow_plot(
 )
 ```
 
-Final Plot - no legend
+Combine the watershed plots into a final plot
 ```{r}
 #combine plots
 final_plot <- plot_grid(
@@ -396,7 +396,7 @@ final_plot <- plot_grid(
 )
 ```
 
-Save Final Plot
+Save Final Plot - no legend
 ```{r}
 ggsave(
   filename = "figures/Fig2_Levo_StreamFlow.tiff",
@@ -411,7 +411,7 @@ ggsave(
 )
 ```
 
-Plot with legend
+Create final plot with legend
 ```{r}
 legend_labels <- c(
   "San Lorenzo River (SAN)",
