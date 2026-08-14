@@ -16,14 +16,15 @@ The watershed polygons and fire perimeter are provided in WGS84, whereas the
 dNBR rasters are provided in NAD83 / Conus Albers (EPSG:5070). Vector data are
 reprojected to the dNBR raster CRS for spatial analysis.
 
-Install and load libraries
+Install packages if necessary - can skip if you already have these packages installed
 ```{r}
-#install if necessary
-# install.packages("terra")
-# install.packages("tidyr")
-# install.packages("dplyr")
+install.packages("terra")
+install.packages("tidyr")
+install.packages("dplyr")
+```
 
-#load
+Load libraries
+```{r}
 library(terra)
 library(tidyr)
 library(dplyr)
@@ -32,11 +33,11 @@ library(dplyr)
 Read input data
 ```{r}
 #read watershed polygons
-SAN <- vect("GIS Files/streamstats/SAN.geojson")
-PESC <- vect("GIS Files/streamstats/PESC.geojson")
-LAG <- vect("GIS Files/streamstats/LAG.geojson")
-MAJ <- vect("GIS Files/streamstats/MAJ.geojson")
-SCT <- vect("GIS Files/streamstats/SCT.geojson")
+SAN <- vect("data/GIS Files/streamstats/SAN.geojson")
+PESC <- vect("data/GIS Files/streamstats/PESC.geojson")
+LAG <- vect("data/GIS Files/streamstats/LAG.geojson")
+MAJ <- vect("data/GIS Files/streamstats/MAJ.geojson")
+SCT <- vect("data/GIS Files/streamstats/SCT.geojson")
 
 #read in fire perimeter
 fire_url <- paste0(
@@ -50,10 +51,10 @@ fire_url <- paste0(
 fire_perimeter <- vect(fire_url)
 
 #read dNBR raster
-dnbr <- rast("GIS Files/mtbs-albers-dnbr/mtbs_ca3726212222320200816_10021177_20200724_20210711_dnbr.tif")
+dnbr <- rast("data/GIS Files/mtbs-albers-dnbr/mtbs_ca3726212222320200816_10021177_20200724_20210711_dnbr.tif")
 
 #read dnbr classified raster
-dnbr_class <- rast("GIS Files/mtbs-albers-dnbr/mtbs_ca3726212222320200816_10021177_20200724_20210711_dnbr6.tif")
+dnbr_class <- rast("data/GIS Files/mtbs-albers-dnbr/mtbs_ca3726212222320200816_10021177_20200724_20210711_dnbr6.tif")
 ```
 
 Prepare spatial data
@@ -328,9 +329,23 @@ final_burn_summary <- final_burn_summary %>%
     Mean_dNBR_watershed = round(Mean_dNBR_watershed, 2)
   )
 
+#Add Watershed_Name column to make it easier to combine with other dataframes
+final_burn_summary <- final_burn_summary %>%
+  mutate(
+    Watershed_Name = case_when(
+      Watershed == "SAN" ~ "San Lorenzo River",
+      Watershed == "PESC" ~ "Pescadero Creek",
+      Watershed == "LAG" ~ "Laguna Creek",
+      Watershed == "MAJ" ~ "Majors Creek",
+      Watershed == "SCT" ~ "Scott Creek",
+      TRUE ~ Watershed
+    )
+  )
+
+#Save burn metrics as csv
 write.csv(
   final_burn_summary,
-  "watershed_burn_severity_summary.csv",
+  "data/watershed_burn_severity_summary.csv",
   row.names = FALSE
 )
 ```

@@ -595,7 +595,7 @@ envfit_result
 Print a labeled NMDS figure
 ```{r}
 # Begin saving to file to output folder
-CairoPNG(filename = file.path("NMDS_labeled.png"),
+CairoPNG(filename = file.path("figures/NMDS_labeled.png"),
          width = 7, height = 4, units = "in", res = 300)
 
 #NMDS Visual Plot
@@ -655,7 +655,7 @@ dev.off()
 Print Unlabeled NMDS for figure making
 ```{r}
 # Begin saving to file to output folder
-CairoPNG(filename = file.path("NMDS_unlabeled.png"), 
+CairoPNG(filename = file.path("figures/NMDS_unlabeled.png"), 
          width = 7, height = 4, units = "in", res = 300)
 
 # Draw the plot (your label-free version)
@@ -685,28 +685,3 @@ ggplot(nmds_scores, aes(x = NMDS1, y = NMDS2)) +
 dev.off()
 ```
 
-#Calculate rough fluxes of levoglucosan in the first year post-fire
-```{r}
-#Convert discharge values from cubic meters per second (cms) to liters per second
-CombinedData$Discharge_liter_per_sec <- CombinedData$Discharge_cms * 1000
-
-#Calculate sample-specific flux values and convert to units of kg per year
-CombinedData$Levo_flux_kilo_gram_C_per_year <- CombinedData$Levo_micro_mol_C_per_L * CombinedData$Discharge_liter_per_sec * 31536000 * 12 / 1000000000
-
-#Average flux samples by watershed
-avg_flux_per_watershed <- CombinedData %>%
-  group_by(Watershed) %>%
-  summarise(
-    mean_flux = mean(Levo_flux_kilo_gram_C_per_year, na.rm = TRUE),
-    sd_flux = sd(Levo_flux_kilo_gram_C_per_year, na.rm = TRUE),
-    n = sum(!is.na(Levo_flux_kilo_gram_C_per_year))
-  )
-
-#Calculate sum of fluxes from each watershed
-total_flux_all_watersheds <- sum(avg_flux_per_watershed$mean_flux)
-total_flux_se <- sqrt(sum((avg_flux_per_watershed$sd_flux)^2 / avg_flux_per_watershed$n))
-
-#Print value with standard deviation carried over
-print(total_flux_all_watersheds) #flux
-print(total_flux_se) #standard error
-```
