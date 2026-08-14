@@ -47,6 +47,9 @@ levoglucosan data, watershed and burn severity data, and previously published or
 #From CUAHSI Hydroshare
 BlackCarbonData <- readr::read_csv("https://www.hydroshare.org/resource/26f08ef7fe344fcb9d3da45160b697fe/data/contents/CoastalFires_BiogeochemData.csv")
 WatershedData <- readr::read_csv("https://www.hydroshare.org/resource/26f08ef7fe344fcb9d3da45160b697fe/data/contents/CoastalFires_WatershedData.csv")
+
+#From CoastalFires_dNBR.Rmd
+Burn_data <- readr::read_csv("data/watershed_burn_severity_summary.csv")
 ``` 
 
 Combine LevoData, WatershedData, and BlackCarbonData data frames to one centralized dataframe: CombinedData
@@ -56,6 +59,8 @@ CombinedData <- left_join(LevoData, BlackCarbonData, by = "IGSN")
 
 #add watershed metadata and remove duplicated columns
 CombinedData <- left_join(CombinedData, WatershedData, by = "Watershed")
+CombinedData <- left_join(CombinedData, Burn_data, by = c("Watershed" = "Watershed_Name"))
+
 CombinedData <- CombinedData %>% select(-Lat, -Long, -Material, -Sample_ID) #delete extra location columns
 ```
 
@@ -105,23 +110,30 @@ CombinedData <- CombinedData %>%
 CombinedData <- CombinedData %>%
   select(-DOC_mgC_per_L, -DBC_mgC_per_L, -dB6CA_nano_mol_per_L, -dB5CA_nano_mol_per_L, 
          -Levoglucosan_microgram_per_L, -stdev_Levoglucosan_microgram_per_L)
+
+#Remove burn metrics that were processed with a different method in Richardson et al 2024
+CombinedData <- CombinedData %>%
+  select(-Burn_Extent_percent, -Area_low_severity_percent, -Area_low_to_mod_severity_percent, -Area_mod_to_high_severity_percent)
+
+#Remove potentially confusing burn metric from CoastalFires_dNBR (i.e., mean_dNBR_burned is within the fire perimeter not entire watershed)
+CombinedData <- CombinedData %>%
+  select(-Mean_dNBR_burned)
+
+#Remove any unnecessary columns
+CombinedData <- CombinedData %>%
+  select(-DBC_micro_mol_C_per_L, -DBC_DOC_percent, -a254_per_m, -SUVA254_L_per_mgC_per_m, -Methods_Deviation, -IGSN)
 ```
 
 Re-arrange column order
 ```{r}
 # Specify the desired column order
-desired_order <- c("Watershed", "Date", "Time", "time_since_fire_day", "Latitude", "Longitude", "Location_Change",
-                   "Discharge_cms", "DOC_micro_mol_C_per_L", "Levo_micro_mol_C_per_L", "stdev_Levo_micro_mol_C_per_L",   "B6CA_micro_mol_C_per_L",
-                   "B5CA_micro_mol_C_per_L", "B6CA_and_B5CA_micro_mol_C_per_L", "dB6CA_B5CA",
-                   "Levo_DOC_percent", "BPCA_DOC_percent", "DBC_micro_mol_C_per_L", "DBC_DOC_percent",
-                   "a254_per_m", "SUVA254_L_per_mgC_per_m", 
-                   "Area_square_kilometer", "Average_slope_percent", 
-                   "Average_precipitation_milli_meter", "Burn_Extent_percent", 
-                   "Area_low_severity_percent", "Area_low_to_mod_severity_percent", 
-                   "Area_mod_to_high_severity_percent", "Forest_percent", 
-                   "Shrub_percent", "Developed_percent", 
-                   "Sandstone_and_sedimentary_percent", "Igneous_percent", 
-                   "Suficial_Sediments_percent", "Schist_percent")
+desired_order <- c("Sample_Name","Watershed","Date","Time","time_since_fire_day","Latitude","Longitude","Location_Change",
+                   "Discharge_cms","DOC_micro_mol_C_per_L","Levo_micro_mol_C_per_L","stdev_Levo_micro_mol_C_per_L","Levo_DOC_percent",
+                   "B6CA_and_B5CA_micro_mol_C_per_L","dB6CA_B5CA","BPCA_DOC_percent","B6CA_micro_mol_C_per_L","B5CA_micro_mol_C_per_L",
+                   "Area_square_kilometer","Average_slope_percent","Average_precipitation_milli_meter",
+                   "Mean_dNBR_watershed","Percent_burned","BE_un_low","BE_low", "BE_mod","BE_high","Inc-greenness","Non-processing",
+                   "Forest_percent","Shrub_percent", "Developed_percent","Sandstone_and_sedimentary_percent","Igneous_percent", 
+                   "Suficial_Sediments_percent","Schist_percent")
 
 # Rearrange the columns
 CombinedData <- CombinedData[, desired_order]

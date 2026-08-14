@@ -6,6 +6,22 @@ Contact [Riley Barton](mailto:rileybbarton@gmail.com) with any questions
 
 -------
 
+**Important Note:** The scripts in this repository are written in R-Markdown. Before starting, make sure your R-Markdown settings in RStudio say:
+Evaluate Chunks in directory: **Project**
+
+You can find this option in RStudio under: Tools > Global Options > R-Markdown
+
+**Pre-Data Processing Instructions:**
+
+Before data processing and interpretation, run the following script to get key burn metrics:
+
+`CoastalFires_dNBR.Rmd`
+
+Notes: 
+ - The script is written in R-Markdown chunks that must be completed in order.
+ - This is required before running the DataFrameWrangling and DataAnalysis scripts.
+ 
+ 
 **Initial Data Processing Instructions:**
 
 In order to combine the datasets and process data prior to data analysis, run the following script:
@@ -18,13 +34,38 @@ Notes:
 
 **Data Analysis:**
 
-In order to conduct statistical analyses associated with the manuscript, run the following script:
+In order to create Figures 3 and 5 and conduct statistical analyses associated with the manuscript, run the following script:
 
 `CoastalFires_DataAnalysis.Rmd`
 
 Notes: 
  - The script is written in R-Markdown chunks that must be completed in order.
- - This will result in a variety of statistical outputs including correlation analyses, significant differences, cumulative load estimations, and NMDS.
+ - This will result in a variety of statistical outputs as an option to print figures:
+    - Figure 3: Levoglucosan and BPCA over time-since-fire
+    - Figure 5: the results of the NMDS.
+ 
+**Cumulative Load:**
+
+In order to determine cumulative loads of Levoglucosan and BPCA associated with the manuscript, run the following script:
+
+`CoastalFires_CumulativeLoad.Rmd`
+
+Notes: 
+ - The script is written in R-Markdown chunks that must be completed in order.
+ - This will result in cumulative load estimates and visualizations via creation of Figure 4
+ 
+**Optional Figure Creation:**
+
+Run the following scripts to create Figures 1 and 2:
+
+`CoastalFires_Fig1_Map.Rmd`
+`CoastalFires_Fig2_Levo_Q.Rmd`
+
+Notes: 
+ - These scripts are written in R-Markdown chunks that must be completed in order.
+ - Figure 1 is the map of the CZU Lightning Complex Fires and sampling locations
+ - Figure 2 shows watershed-specific levoglucosan concentrations and discharge values over the study period
+ 
 
 **References:**
 

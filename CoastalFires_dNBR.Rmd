@@ -1,0 +1,362 @@
+---
+title: "Burn Severity - dnbr continuous & classified"
+author: "rbb"
+date: "2026-08-13"
+output: html_document
+---
+
+Watershed boundaries were obtained from StreamStats and represent the upstream
+contributing areas associated with each sampling location. The CZU Lightning
+Complex Fire perimeter was obtained from the ArcGIS feature service. Continuous
+dNBR and classified dNBR rasters were obtained from the Monitoring Trends in
+Burn Severity (MTBS) dataset.The Albers projection was used because the WGS84
+projection was rotated in the MTBS system.
+
+The watershed polygons and fire perimeter are provided in WGS84, whereas the
+dNBR rasters are provided in NAD83 / Conus Albers (EPSG:5070). Vector data are
+reprojected to the dNBR raster CRS for spatial analysis.
+
+Install packages if necessary - can skip if you already have these packages installed
+```{r}
+install.packages("terra")
+install.packages("tidyr")
+install.packages("dplyr")
+```
+
+Load libraries
+```{r}
+library(terra)
+library(tidyr)
+library(dplyr)
+```
+
+Read input data
+```{r}
+#read watershed polygons
+SAN <- vect("data/GIS Files/streamstats/SAN.geojson")
+PESC <- vect("data/GIS Files/streamstats/PESC.geojson")
+LAG <- vect("data/GIS Files/streamstats/LAG.geojson")
+MAJ <- vect("data/GIS Files/streamstats/MAJ.geojson")
+SCT <- vect("data/GIS Files/streamstats/SCT.geojson")
+
+#read in fire perimeter
+fire_url <- paste0(
+  "https://services1.arcgis.com/jJfZghspGKh8J9Jm/",
+  "arcgis/rest/services/CZU_Fire_Perimeter/FeatureServer/3/query",
+  "?where=1%3D1",
+  "&outFields=*",
+  "&returnGeometry=true",
+  "&f=geojson"
+)
+fire_perimeter <- vect(fire_url)
+
+#read dNBR raster
+dnbr <- rast("data/GIS Files/mtbs-albers-dnbr/mtbs_ca3726212222320200816_10021177_20200724_20210711_dnbr.tif")
+
+#read dnbr classified raster
+dnbr_class <- rast("data/GIS Files/mtbs-albers-dnbr/mtbs_ca3726212222320200816_10021177_20200724_20210711_dnbr6.tif")
+```
+
+Prepare spatial data
+```{r}
+# Check coordinate reference systems
+# crs(SAN) #WGS84
+# crs(PESC) #WGS84
+# crs(LAG) #WGS84
+# crs(MAJ) #WGS84
+# crs(SCT) #WGS84
+# crs(fire_perimeter) #WGS84
+# crs(dnbr) #Conus Albers
+
+#Reproject vector data to the raster crs
+#fire perimeter reprojection
+fire_perimeter_5070 <- project(fire_perimeter, crs(dnbr))
+
+#watershed layer reprojection
+watersheds <- rbind(
+  SAN,
+  PESC,
+  LAG,
+  MAJ,
+  SCT
+)
+watersheds_5070 <- project(watersheds, crs(dnbr))
+
+#add watershed names
+watersheds_5070$Watershed <- c(
+  "SAN",
+  "PESC",
+  "LAG",
+  "MAJ",
+  "SCT"
+)
+```
+
+Calculate continuous dnbr metrics
+```{r}
+#step 1: Clip/mask dnbr to fire perimeter and set outside dnbr to 0 (i.e. unburned) ----
+#crop dnbr raster to fire perimeter extent
+dnbr_crop <- crop(dnbr, fire_perimeter_5070)
+
+#mask dNBR to the fire perimeter
+dnbr_fire <- mask(dnbr_crop, fire_perimeter_5070)
+
+#rasterize the fire perimeter onto the dNBR grid
+fire_mask <- rasterize(
+  fire_perimeter_5070,
+  dnbr_fire,
+  field = 1,
+  background = NA
+)
+
+#set pixels outside the fire perimeter to 0
+dnbr_fire_zero <- ifel(
+  is.na(fire_mask),
+  0,
+  dnbr_fire
+)
+
+#step 2: Calculate watershed level mean dnbr ----
+# Calculate mean dNBR for each watershed (areas outside fire perimeter assumed 0)
+mean_dnbr <- terra::extract(
+  dnbr_fire_zero,
+  watersheds_5070,
+  fun = mean,
+  na.rm = TRUE
+)
+
+#clean table
+mean_dnbr_df <- data.frame(
+  Watershed = watersheds_5070$Watershed,
+  Mean_dNBR = mean_dnbr[[2]]
+)
+
+#step 3: Calculate watershed burn extent ----
+#calculate watershed areas
+watersheds_5070$Watershed_area_m2 <- expanse(watersheds_5070)
+
+#determine the number of burned pixels within each watershed
+burned_cells <- terra::extract(
+  fire_mask,
+  watersheds_5070,
+  fun = sum,
+  na.rm = TRUE
+)
+
+#convert burned pixels to an area
+cell_area <- prod(res(dnbr))
+watersheds_5070$Burned_area_m2 <- burned_cells[[2]] * cell_area
+
+#calculate burn extent of each watershed
+watersheds_5070$Percent_burned <-
+  watersheds_5070$Burned_area_m2 /
+  watersheds_5070$Watershed_area_m2 * 100
+
+#step 4: Compare dnbr within burn area - how severe was the fire (burned area only) ----
+#calculate mean dNBR across burned pixels only
+mean_dnbr_burned <- terra::extract(
+  dnbr_fire,
+  watersheds_5070,
+  fun = mean,
+  na.rm = TRUE
+)
+
+#add to watershed data
+watersheds_5070$Mean_dNBR_burned <- mean_dnbr_burned[[2]]
+
+#step 5: summarize continuous dnbr metrics ----
+# Create summary table
+burn_summary <- data.frame(
+  Watershed = watersheds_5070$Watershed,
+  Percent_burned = watersheds_5070$Percent_burned,
+  Mean_dNBR_burned = watersheds_5070$Mean_dNBR_burned,
+  Mean_dNBR_watershed = mean_dnbr_df$Mean_dNBR
+)
+
+burn_summary
+```
+
+Calculate categorical burn-severity extents
+```{r}
+#step 1: Make a classified raster that covers the entire watershed ----
+#extend classified dnbr raster to cover all watersheds
+dnbr_class_full <- extend(
+  dnbr_class,
+  ext(watersheds_5070),
+)
+
+#rasterize fire perimeter onto the full classified raster
+fire_mask_class <- rasterize(
+  fire_perimeter_5070,
+  dnbr_class_full,
+  field = 1,
+  background = NA
+)
+
+#set areas outside the fire perimeter to Class 1
+dnbr_class_full <- ifel(
+  is.na(fire_mask_class),
+  1,
+  dnbr_class_full
+)
+
+#step 2: Calculate the 6 dnbr categories within each watershed ----
+#count pixels in each dNBR class within each watershed
+# Extract classified dNBR values for each watershed
+# Extract classified dNBR values for each watershed
+class_values <- terra::extract(
+  dnbr_class_full,
+  watersheds_5070
+)
+
+head(class_values)
+
+#step 3: Count each class and calculate percentages ----
+# Rename columns
+names(class_values) <- c("ID", "Class")
+
+# Remove NA values
+class_values <- class_values[!is.na(class_values$Class), ]
+
+# Count pixels in each class for each watershed
+class_counts <- as.data.frame(
+  table(
+    class_values$ID,
+    class_values$Class
+  )
+)
+
+# Rename columns
+names(class_counts) <- c(
+  "ID",
+  "Class",
+  "Count"
+)
+
+# Calculate total number of pixels in each watershed
+watershed_totals <- aggregate(
+  Count ~ ID,
+  data = class_counts,
+  FUN = sum
+)
+
+# Add watershed totals to class table
+class_counts <- merge(
+  class_counts,
+  watershed_totals,
+  by = "ID",
+  suffixes = c("", "_total")
+)
+
+# Calculate percentage of watershed
+class_counts$Percent <- 
+  class_counts$Count / class_counts$Count_total * 100
+
+# Add watershed names
+class_counts$Watershed <- c(
+  "SAN",
+  "PESC",
+  "LAG",
+  "MAJ",
+  "SCT"
+)[class_counts$ID]
+
+# Add MTBS class names
+class_counts$Class_name <- c(
+  "Unburned to low",
+  "Low",
+  "Moderate",
+  "High",
+  "Increased greenness",
+  "Non-processing"
+)[class_counts$Class]
+
+# Final table
+burn_categories <- class_counts[, c(
+  "Watershed",
+  "Class",
+  "Class_name",
+  "Count",
+  "Percent"
+)]
+
+burn_categories$Percent <- round(
+  burn_categories$Percent, 
+  2
+)
+
+burn_categories
+
+#step 4: format classified dnbr table
+burn_categories_wide <- burn_categories %>%
+  select(Watershed, Class_name, Percent) %>%
+  pivot_wider(
+    names_from = Class_name,
+    values_from = Percent
+  )
+
+burn_categories_wide
+```
+
+Combine continuous and classified burn metrics and export results
+```{r}
+# Reshape classified burn extents to one row per watershed
+classified_extents <- burn_categories %>%
+  select(Watershed, Class_name, Percent) %>%
+  pivot_wider(
+    names_from = Class_name,
+    values_from = Percent
+  )
+
+# Combine with the original burn summary
+final_burn_summary <- burn_summary %>%
+  select(
+    Watershed,
+    Percent_burned,
+    Mean_dNBR_burned,
+    Mean_dNBR_watershed
+  ) %>%
+  left_join(
+    classified_extents,
+    by = "Watershed"
+  )
+
+# Round percentages and dNBR values
+final_burn_summary <- final_burn_summary %>%
+  mutate(
+    Percent_burned = round(Percent_burned, 2),
+    Mean_dNBR_burned = round(Mean_dNBR_burned, 2),
+    Mean_dNBR_watershed = round(Mean_dNBR_watershed, 2)
+  )
+
+#Add Watershed_Name column to make it easier to combine with other dataframes
+final_burn_summary <- final_burn_summary %>%
+  mutate(
+    Watershed_Name = case_when(
+      Watershed == "SAN" ~ "San Lorenzo River",
+      Watershed == "PESC" ~ "Pescadero Creek",
+      Watershed == "LAG" ~ "Laguna Creek",
+      Watershed == "MAJ" ~ "Majors Creek",
+      Watershed == "SCT" ~ "Scott Creek",
+      TRUE ~ Watershed
+    )
+  )
+
+#Rename columns
+final_burn_summary <- final_burn_summary %>%
+  rename(
+    BE_un_low = `Unburned to low`,
+    BE_low = Low,
+    BE_mod = Moderate,
+    BE_high = High,
+    `Inc-greenness` = `Increased greenness`,
+    `Non-processing` = `Non-processing`
+  )
+
+#Save burn metrics as csv
+write.csv(
+  final_burn_summary,
+  "data/watershed_burn_severity_summary.csv",
+  row.names = FALSE
+)
+```
