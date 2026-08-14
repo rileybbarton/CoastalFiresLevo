@@ -342,6 +342,17 @@ final_burn_summary <- final_burn_summary %>%
     )
   )
 
+#Rename columns
+final_burn_summary <- final_burn_summary %>%
+  rename(
+    BE_un_low = `Unburned to low`,
+    BE_low = Low,
+    BE_mod = Moderate,
+    BE_high = High,
+    `Inc-greenness` = `Increased greenness`,
+    `Non-processing` = `Non-processing`
+  )
+
 #Save burn metrics as csv
 write.csv(
   final_burn_summary,

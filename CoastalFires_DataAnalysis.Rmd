@@ -53,7 +53,7 @@ Range, Average, Median
 ```{r}
 # List of variables to summarize
 vars_to_summarize <- c("DOC_micro_mol_C_per_L", "Levo_micro_mol_C_per_L", "B6CA_and_B5CA_micro_mol_C_per_L", 
-                       "Levo_DOC_percent", "BPCA_DOC_percent", "SUVA254_L_per_mgC_per_m", "a254_per_m")
+                       "Levo_DOC_percent", "BPCA_DOC_percent")
 
 # Function to calculate summary stats for one variable
 summary_stats <- function(var) {
@@ -108,7 +108,7 @@ CombinedData$Watershed <- as.factor(CombinedData$Watershed)
 # Filter to numeric data (excluding lat/long again)
 numeric_columns <- sapply(CombinedData, is.numeric)
 Data_numeric <- CombinedData[, numeric_columns]
-Data_numeric <- Data_numeric %>% select(-Latitude, -Longitude, -`Increased greenness`, -`Non-processing`)
+Data_numeric <- Data_numeric %>% select(-Latitude, -Longitude, -`Inc-greenness`, -`Non-processing`)
 
 # Run Kruskal-Wallis test for each numeric variable by Watershed
 kruskal_results <- sapply(names(Data_numeric), function(var) {
@@ -181,7 +181,7 @@ print(wilcox_df)
 Spearman's Rank: Time since fire
 ```{r}
 # Variables to test against time_since_fire
-vars_to_test_time_since_fire <- c("DOC_micro_mol_C_per_L", "Levo_micro_mol_C_per_L", "B6CA_and_B5CA_micro_mol_C_per_L", "Levo_DOC_percent", "BPCA_DOC_percent", "Q_norm_levo", "SUVA254_L_per_mgC_per_m", "a254_per_m")
+vars_to_test_time_since_fire <- c("DOC_micro_mol_C_per_L", "Levo_micro_mol_C_per_L", "B6CA_and_B5CA_micro_mol_C_per_L", "Levo_DOC_percent", "BPCA_DOC_percent", "Q_norm_levo")
 
 # Initialize a list to store results
 spearman_results_time_since_fire <- lapply(vars_to_test_time_since_fire, function(var) {
@@ -392,7 +392,7 @@ ggsave(
 Spearman's Rank: Discharge
 ```{r}
 # Variables to test against discharge
-vars_to_test_Q <- c("DOC_micro_mol_C_per_L", "Levo_micro_mol_C_per_L", "B6CA_and_B5CA_micro_mol_C_per_L", "Levo_DOC_percent", "BPCA_DOC_percent", "SUVA254_L_per_mgC_per_m", "a254_per_m")
+vars_to_test_Q <- c("DOC_micro_mol_C_per_L", "Levo_micro_mol_C_per_L", "B6CA_and_B5CA_micro_mol_C_per_L", "Levo_DOC_percent", "BPCA_DOC_percent")
 
 # Initialize a list to store results
 spearman_results_Q <- lapply(vars_to_test_Q, function(var) {
@@ -423,10 +423,11 @@ print(spearman_df_Q)
 Spearman's Rank: Levo versus watershed and fire characteristics 
 ```{r}
 # Variables to test against Levo_micro_mol_C_per_L
-vars_to_test_levo_conc <- c("Area_square_kilometer", "Average_slope_percent", "Average_precipitation_milli_meter",  "Mean_dNBR_watershed", "BE_un_low", "BE_low", "BE_mod","BE_high",
-"Forest_percent", "Shrub_percent", "Developed_percent", "Sandstone_and_sedimentary_percent", "Igneous_percent", "Suficial_Sediments_percent", "Schist_percent")
-  #from Richardson: "Burn_Extent_percent", "Area_low_severity_percent", "Area_low_to_mod_severity_percent", "Area_mod_to_high_severity_percent",
-
+vars_to_test_levo_conc <- c("Area_square_kilometer","Average_slope_percent","Average_precipitation_milli_meter",
+                            "Percent_burned","Mean_dNBR_watershed","BE_un_low","BE_low","BE_mod","BE_high",
+                            "Forest_percent","Shrub_percent","Developed_percent","Sandstone_and_sedimentary_percent",
+                            "Igneous_percent", "Suficial_Sediments_percent", "Schist_percent")
+  
 # Initialize a list to store results
 spearman_results_levo_conc <- lapply(vars_to_test_levo_conc, function(var) {
   
@@ -456,9 +457,10 @@ print(spearman_df_levo_conc)
 Spearman's Rank: Levo-DOC versus watershed and fire characteristics 
 ```{r}
 # Variables to test against Levo_DOC_percent
-vars_to_test_levo_DOC <- c("Area_square_kilometer", "Average_slope_percent", "Average_precipitation_milli_meter",  "Mean_dNBR_watershed", "BE_un_low", "BE_low", "BE_mod","BE_high",
-"Forest_percent", "Shrub_percent", "Developed_percent", "Sandstone_and_sedimentary_percent", "Igneous_percent", "Suficial_Sediments_percent", "Schist_percent")
-  #from Richardson: "Burn_Extent_percent", "Area_low_severity_percent", "Area_low_to_mod_severity_percent", "Area_mod_to_high_severity_percent",
+vars_to_test_levo_DOC <- c("Area_square_kilometer","Average_slope_percent","Average_precipitation_milli_meter",
+                            "Percent_burned","Mean_dNBR_watershed","BE_un_low","BE_low","BE_mod","BE_high",
+                            "Forest_percent","Shrub_percent","Developed_percent","Sandstone_and_sedimentary_percent",
+                            "Igneous_percent", "Suficial_Sediments_percent", "Schist_percent")
 
 # Initialize a list to store results
 spearman_results_levo_DOC <- lapply(vars_to_test_levo_DOC, function(var) {
@@ -512,7 +514,7 @@ nmds_scores$time <- CombinedData_clean$time_since_fire_day #this is for coloring
 nmds_scores$watershed <- CombinedData_clean$Watershed #this is for the point shape by watershed
 
 # Environmental variables 
-env_variables <- CombinedData_clean[c("time_since_fire_day","Discharge_cms", "Area_square_kilometer", "Average_slope_percent", "Burn_Extent_percent", "Mean_dNBR_watershed", "BE_un_low", "BE_low", "BE_mod","BE_high")]
+env_variables <- CombinedData_clean[c("time_since_fire_day","Discharge_cms", "Area_square_kilometer", "Average_slope_percent", "Percent_burned", "Mean_dNBR_watershed", "BE_un_low", "BE_low", "BE_mod","BE_high")]
   #from Richardson:  "Area_low_severity_percent", "Area_low_to_mod_severity_percent", "Area_mod_to_high_severity_percent"
 
 #assign environmental variables to df
@@ -531,7 +533,7 @@ en_coord_cont$WrappedLabel <- c(
   "Watershed\nArea",
   "Slope",
   "Burn Extent",
-  "Mean dnbr",
+  "Mean dNBR",
   "Un-Low\nBurn Extent",
   "Low\nBurn Extent",
   "Mod\nBurn Extent",
