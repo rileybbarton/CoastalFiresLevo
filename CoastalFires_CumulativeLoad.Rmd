@@ -5,7 +5,17 @@ date: "`r Sys.Date()`"
 output: html_document
 ---
 
-Packages
+Install packages if necessary
+```{r}
+install.packages("dplyr")
+install.packages("lubridate")
+install.packages("tidyr")
+install.packages("patchwork")
+install.packages("ggplot2")
+install.packages("grid")
+```
+
+Load libraries
 ```{r}
 library(dplyr)
 library(lubridate)
@@ -15,14 +25,11 @@ library(ggplot2)
 library(grid)
 ```
 
-
 Get Data
 ```{r}
-#From CUAHSI Hydroshare
-DischargeData <- readr::read_csv("https://www.hydroshare.org/resource/26f08ef7fe344fcb9d3da45160b697fe/data/contents/CoastalFires_DischargeData.csv")
-
 #From GitHub
 CombinedData <- readr::read_csv("data/CoastalFires_CombinedData.csv")
+DischargeData <- readr::read_csv("data/CoastalFires_FlowData.csv") #can also be found on CUAHSI but Laguna flow is rounded
 ```
 
 Exclude samples that were taken at a different location. 
@@ -147,16 +154,6 @@ FlowData %>%
 
 Convert to daily discharge (highest resolution for Scott Creek)
 ```{r}
-# DailyFlow <- FlowData %>%
-#   mutate(Date = as.Date(DateTime)) %>%
-#   filter(Date >= as.Date("2020-10-07"),
-#          Date <= as.Date("2021-05-02")) %>%
-#   group_by(Watershed, Date) %>%
-#   summarize(
-#     Q_mean = mean(Flow, na.rm=TRUE),
-#     .groups="drop"
-#   )
-
 DailyFlow <- FlowData %>%
   mutate(Date = as.Date(DateTime)) %>%
   filter(Date >= as.Date("2020-10-07"),
@@ -271,7 +268,7 @@ TotalExport <- DailyLoads_All %>%
 TotalExport
 ```
 
-Redo Plots
+Create Plots
 ```{r}
 #Make data for plot in long format
 PlotData <- DailyLoads %>%
@@ -376,6 +373,8 @@ theme(
   axis.ticks.x = element_line(color = "black")
 )
 
+cumulative_plot
+
 #Save
 ggsave(
   filename = "figures/Fig4_CumulativeLoad.tiff",
@@ -390,7 +389,7 @@ ggsave(
 )
 ```
 
-Not fraction
+A non-fraction visual if wanted
 ```{r}
 ggplot(DailyLoads, aes(Date, Levo_cumulative_Mg, color = Watershed)) +
   geom_line() +
@@ -427,5 +426,8 @@ ExportTiming_BPCA <- DailyLoads %>%
     day_75 = Date[min(which(BPCA_cumulative_Mg >= 0.75*total_BPCA))],
     day_90 = Date[min(which(BPCA_cumulative_Mg >= 0.9*total_BPCA))]
   )
+
+ExportTiming_Levo
+ExportTiming_BPCA
 ```
 
