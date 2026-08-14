@@ -1,0 +1,241 @@
+---
+title: "Figure 1: CZU Fires Map"
+author: "rbb"
+date: "2026-06-03"
+output: html_document
+---
+
+Install package if necessary
+```{r}
+# install.packages("arcgislayers")
+# install.packages("sf")
+# install.packages("tmap")
+# install.packages("ggplot2")
+# install.packages("dplyr")
+# install.packages("terra")
+# install.packages("tigris")
+# install.packages("tidyterra")
+# install.packages("ggspatial")
+# install.packages("cowplot")
+```
+
+load package(s)
+```{r}
+library(arcgislayers)
+library(sf)
+library(tmap)
+library(ggplot2)
+library(dplyr)
+library(terra)
+library(tigris)
+library(tidyterra)
+library(ggspatial)
+library(cowplot)
+```
+
+find and download shapefiles/rasters
+```{r}
+#California
+  #from repo
+    ca <- states(cb = TRUE) |>
+      dplyr::filter(STUSPS == "CA")
+    
+#Streams
+  #open file as GeoJSON
+    streams <- st_read("GIS Files/Streams clipped to watersheds.gpkg") 
+    
+#Watershed Boundaries
+  #open file as GeoJSON
+    watershed_boundary <- st_read("GIS Files/CZU Watersheds.gpkg") 
+    
+#Burn area from MTBS, downloaded on May-26-2026. Filters - Region: California, Year: 2020
+    burn_area <- st_read("GIS Files/mtbs-albers-dnbr/mtbs_ca3726212222320200816_10021177_20200724_20210711_burn_area.shp") #had to download from email
+    
+#Burn severity from MTBS, downloaded on May-26-2026. Filters - Region: California, Year: 2020
+  burn_severity <- rast("GIS Files/mtbs-albers-dnbr/mtbs_ca3726212222320200816_10021177_20200724_20210711_dnbr.tif") #had to download from email
+  
+#Sites
+  sites <- read.csv("GIS Files/Sample Locations.csv")
+```
+
+Assign and/or transform CRS's to UTM
+```{r}
+#crs UTM downloaded from mtbs
+burn_utm <- terra::project(
+  burn_severity,
+  "EPSG:32610",
+  method = "near"
+)
+
+#convert sites from WGS84 to UTM
+sites_sf <- st_as_sf(
+  sites,
+  coords = c("Long", "Lat"),
+  crs = 4326
+)
+sites_utm <- st_transform(sites_sf, 32610)
+
+#streams is in Web Mercator, assign the correct CRS and transform
+streams <- st_set_crs(streams, 3857)
+streams_utm <- st_transform(streams, 32610)
+
+#basic transformation
+burn_area_utm <- st_transform(burn_area, 32610)
+watershed_utm <- st_transform(watershed_boundary, 32610)
+ca_utm <- st_transform(ca, 32610)
+```
+
+Snip burn severity raster to burn extent
+```{r}
+# Convert sf to SpatVector
+burn_vect <- vect(burn_area_utm)
+
+# Crop to the extent of the fire perimeter
+burn_severity_crop <- crop(burn_utm, burn_vect)
+
+# Mask to the actual fire perimeter
+burn_severity_crop <- mask(burn_severity_crop, burn_vect)
+
+#convert to dNBR
+burn_dnbr <- burn_severity_crop / 1000
+```
+
+Main map
+```{r}
+#set extent to be watersheds with some padding around it
+bb <- st_bbox(watershed_utm)
+
+left_pad  <- (bb$xmax - bb$xmin) * 0.2
+right_pad <- (bb$xmax - bb$xmin) * 0.5
+bottom_pad <- (bb$ymax - bb$ymin) * 0.2
+top_pad    <- (bb$ymax - bb$ymin) * 0.10
+
+main_map <- ggplot() +
+
+  geom_sf(data = ca_utm, fill = "white", color = NA) +
+  geom_spatraster(data = burn_dnbr) +
+  scale_fill_gradientn(
+    name = "dNBR",
+    colors = c(
+      "#2166AC",  # negative
+      "#F7F7F7",  # near zero
+      "#FEE08B",  # low
+      "#F46D43",  # moderate
+      "#A50026"   # high
+    ),
+    na.value = "transparent",
+    guide = guide_colorbar(
+      frame.colour = "black",
+      frame.linewidth = 0.25,
+      ticks = TRUE,
+      ticks.colour = "black"
+    )
+  ) +
+
+
+  geom_sf(data = ca_utm, fill = NA, color = "black", linewidth = 0.75) +
+
+  geom_sf(data = watershed_utm, fill = NA, color = "black", linewidth = 0.5) +
+
+  geom_sf(data = streams_utm, color = "blue", linewidth = 0.3) +
+
+  geom_sf(data = sites_utm, shape = 21, fill = "black", color = "black", size = 2.5) +
+
+  coord_sf(
+    xlim = c(
+      bb$xmin - left_pad,
+      bb$xmax + right_pad
+    ),
+    ylim = c(
+      bb$ymin - bottom_pad,
+      bb$ymax + top_pad
+    ),
+    expand = FALSE
+  ) +
+
+  annotation_scale(location = "bl", width_hint = 0.3) +
+
+  annotation_north_arrow(
+    location = "tl",
+    style = north_arrow_minimal(),
+    height = unit(1, "cm"),
+    width = unit(1, "cm")
+  ) +
+
+  theme_bw() +
+  theme(
+      legend.position = c(0.89, 0.45),
+      legend.background = element_rect(
+        fill = NA
+        ),
+      legend.key.height = unit(0.3, "cm"),
+      legend.key.width = unit(0.3, "cm"),
+      legend.text = element_text(size = 7),
+      legend.title = element_text(size = 8)
+      )
+```
+
+Inset map
+```{r}
+#make black box around study site
+study_box <- st_as_sfc(st_bbox(watershed_boundary))
+western_states <- states(cb = TRUE) |> filter(STUSPS %in% c("CA","OR","WA","NV","ID","MT","WY","UT","AZ","CO","NM"))
+
+#inset map
+inset_map <- ggplot() +
+
+  geom_sf(data = western_states,
+          fill = "#EFEFEF",
+          color = "black",
+          linewidth = 0.3) +
+
+  geom_sf(data = study_box,
+          fill = NA,
+          color = "red",
+          linewidth = 0.4) +
+
+  coord_sf() +
+
+  theme_void() +
+  
+  theme(
+    panel.border = element_rect(
+      color = "black",
+      fill = NA,
+      linewidth = 0.8
+    )
+  )
+```
+
+Final Map
+```{r}
+final_map <- ggdraw() +
+  draw_plot(main_map) +
+  draw_plot(
+    inset_map,
+    x = 0.66,
+    y = 0.61,
+    width = 0.35,
+    height = 0.35
+  ) +
+  theme(
+  panel.background = element_rect(
+    fill = "white",
+    color = "black",
+    linewidth = 0.8
+  )
+)
+```
+
+Print Final Map
+```{r}
+ggsave(
+  filename = "figures/CZU_fire_map.tif",
+  plot = final_map,
+  width = 5,
+  height = 3.5,
+  units = "in",
+  dpi = 600,
+  compression = "lzw"
+)
+```
