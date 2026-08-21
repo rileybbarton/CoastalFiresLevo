@@ -4,6 +4,7 @@ author: "rbb"
 date: "2026-07-09"
 output: html_document
 ---
+Before starting, make sure to read the README found on the GitHub repository. This script is utilized for data analysis and preliminary figure creation.
 
 Install necessary packages (run once if necessary)
 ```{r}
@@ -46,17 +47,13 @@ CombinedData <- CombinedData %>%
   filter(Location_Change != "Y")
 ```
 
-Make sure dates are right
+Create DateTime
 ```{r}
 CombinedData <- CombinedData %>%
   mutate(
-    DateTime = if_else(
-      is.na(Time),
-      paste(Date, "12:00:00"),
-      paste(Date, Time)
-    ),
+    Time = if_else(is.na(Time), "12:00:00", as.character(Time)), #assume noon if no time specified
     DateTime = as.POSIXct(
-      DateTime,
+      paste(Date, Time),
       format = "%Y-%m-%d %H:%M:%S",
       tz = "America/Los_Angeles"
     )
@@ -209,7 +206,6 @@ ws_shapes <- c(
 )
 ```
 
-
 Function for making plots
 ```{r}
 make_levo_flow_plot <- function(watershed_name,
@@ -330,7 +326,6 @@ make_levo_flow_plot <- function(watershed_name,
     )
 }
 ```
-
 
 Make a plot for each watershed
 ```{r}
