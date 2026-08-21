@@ -4,6 +4,7 @@ author: "rbb"
 date: "`r Sys.Date()`"
 output: html_document
 ---
+Before starting, make sure to read the README found on the GitHub repository. This script is utilized for estimating cumulative load of levoglucosan and black carbon (BPCA).
 
 Install packages if necessary
 ```{r}
@@ -29,7 +30,7 @@ Get Data
 ```{r}
 #From GitHub
 CombinedData <- readr::read_csv("data/CoastalFires_CombinedData.csv")
-DischargeData <- readr::read_csv("data/CoastalFires_FlowData.csv") #can also be found on CUAHSI but Laguna flow is rounded
+DischargeData <- readr::read_csv("data/CoastalFires_FlowData.csv") #can also be found on CUAHSI but Laguna flow is on CUAHSI, messing with the log-scale
 ```
 
 Exclude samples that were taken at a different location. 
@@ -39,15 +40,16 @@ CombinedData <- CombinedData %>%
   filter(Location_Change != "Y")
 ```
 
-Make sure dates are right
+Create a DateTime
 ```{r}
 CombinedData <- CombinedData %>%
   mutate(
-    DateTime = as.POSIXct(Date, tz = "America/Los_Angeles") +
-      if_else(is.na(Time),
-              12*60*60,
-              as.numeric(Time)),
-    DateTime = format(DateTime, "%Y-%m-%d %H:%M")
+    Time = if_else(is.na(Time), "12:00:00", as.character(Time)), #assume noon if no time specified
+    DateTime = as.POSIXct(
+      paste(Date, Time),
+      format = "%Y-%m-%d %H:%M:%S",
+      tz = "America/Los_Angeles"
+    )
   )
 ```
 

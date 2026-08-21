@@ -4,6 +4,7 @@ author: "rbb"
 date: "2026-06-03"
 output: html_document
 ---
+Before starting, make sure to read the README found on the GitHub repository. This script is utilized for data analysis and preliminary figure creation.
 
 Install package if necessary
 ```{r}
@@ -42,20 +43,29 @@ find and download shapefiles/rasters
     
 #Streams
   #open file as GeoJSON
-    streams <- st_read("GIS Files/Streams clipped to watersheds.gpkg") 
+    streams <- st_read("data/GIS Files/Streams clipped to watersheds.gpkg") 
     
 #Watershed Boundaries
   #open file as GeoJSON
-    watershed_boundary <- st_read("GIS Files/CZU Watersheds.gpkg") 
+    watershed_boundary <- st_read("data/GIS Files/CZU Watersheds.gpkg") 
     
-#Burn area from MTBS, downloaded on May-26-2026. Filters - Region: California, Year: 2020
-    burn_area <- st_read("GIS Files/mtbs-albers-dnbr/mtbs_ca3726212222320200816_10021177_20200724_20210711_burn_area.shp") #had to download from email
-    
+#read in fire perimeter
+fire_url <- paste0(
+  "https://services1.arcgis.com/jJfZghspGKh8J9Jm/",
+  "arcgis/rest/services/CZU_Fire_Perimeter/FeatureServer/3/query",
+  "?where=1%3D1",
+  "&outFields=*",
+  "&returnGeometry=true",
+  "&f=geojson"
+)
+burn_area <- vect(fire_url)
+
+
 #Burn severity from MTBS, downloaded on May-26-2026. Filters - Region: California, Year: 2020
-  burn_severity <- rast("GIS Files/mtbs-albers-dnbr/mtbs_ca3726212222320200816_10021177_20200724_20210711_dnbr.tif") #had to download from email
+  burn_severity <- rast("data/GIS Files/mtbs-albers-dnbr/mtbs_ca3726212222320200816_10021177_20200724_20210711_dnbr.tif") #had to download from email
   
 #Sites
-  sites <- read.csv("GIS Files/Sample Locations.csv")
+  sites <- read.csv("data/GIS Files/Sample Locations.csv")
 ```
 
 Assign and/or transform CRS's to UTM
@@ -80,15 +90,15 @@ streams <- st_set_crs(streams, 3857)
 streams_utm <- st_transform(streams, 32610)
 
 #basic transformation
-burn_area_utm <- st_transform(burn_area, 32610)
+burn_area_utm <- terra::project(burn_area, "EPSG:32610")
 watershed_utm <- st_transform(watershed_boundary, 32610)
 ca_utm <- st_transform(ca, 32610)
 ```
 
 Snip burn severity raster to burn extent
 ```{r}
-# Convert sf to SpatVector
-burn_vect <- vect(burn_area_utm)
+# rename
+burn_vect <- burn_area_utm
 
 # Crop to the extent of the fire perimeter
 burn_severity_crop <- crop(burn_utm, burn_vect)
