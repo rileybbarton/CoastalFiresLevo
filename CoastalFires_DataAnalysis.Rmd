@@ -4,9 +4,8 @@ author: "RB and AC"
 date: "2025-04-13"
 output: html_document
 ---
-To utilize this script it is necessary to have run "CosatalFires_DataFrameWrangling.Rmd" ending with the creation of "CoastalFires_CombinedData.csv". If you have not completed this, please do so before continuing. 
 
-Here, this script is utilized for data analysis and preliminary figure creation.
+Before starting, make sure to read the README found on the GitHub repository. This script is utilized for data analysis and preliminary figure creation.
 
 Install necessary packages (run once if necessary)
 ```{r}
@@ -629,7 +628,8 @@ geom_text_repel(
   size = 3,
   box.padding = 0.5,
   point.padding = 0.25,
-  segment.color = NA,
+  segment.color = "black",
+  segment.size = 0.4,
   max.overlaps = Inf,
   force = 1
 ) +
