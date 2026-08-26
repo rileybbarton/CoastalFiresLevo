@@ -4,7 +4,7 @@ author: "rbb"
 date: "2026-06-03"
 output: html_document
 ---
-Before starting, make sure to read the README found on the GitHub repository. This script is utilized for data analysis and preliminary figure creation.
+Before starting, make sure to read the README found on the GitHub repository. This script is utilized for creating a Map of the CZU lightning complex fire and sampling sites associated with the manuscript.
 
 Install package if necessary
 ```{r}

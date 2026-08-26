@@ -4,7 +4,7 @@ author: "rbb"
 date: "2026-07-09"
 output: html_document
 ---
-Before starting, make sure to read the README found on the GitHub repository. This script is utilized for data analysis and preliminary figure creation.
+Before starting, make sure to read the README found on the GitHub repository. This script is utilized for the creation of Figure 2 showing levoglucosan concentrations over time with discharge on the secondary y-axis.
 
 Install necessary packages (run once if necessary)
 ```{r}

@@ -5,6 +5,10 @@ date: "2026-08-13"
 output: html_document
 ---
 
+Before starting, make sure to read the README found on the GitHub repository. 
+This script calculates mean dNBR for each watershed as well as the percentage of
+the watershed burned at each severity (i.e., low, moderate, high).
+
 Watershed boundaries were obtained from StreamStats and represent the upstream
 contributing areas associated with each sampling location. The CZU Lightning
 Complex Fire perimeter was obtained from the ArcGIS feature service. Continuous
